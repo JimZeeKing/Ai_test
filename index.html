@@ -317,10 +317,6 @@
       z-index: 1
     }
 
-    #canvas-wrap.tl-open {
-      bottom: 160px
-    }
-
     #render-canvas {
       display: block;
       width: 100% !important;
@@ -430,149 +426,6 @@
     .kf-add-btn:hover {
       background: #f6a82a22
     }
-
-    /* ===== TIMELINE ===== */
-    #timeline {
-      position: fixed;
-      left: 188px;
-      right: 188px;
-      bottom: 22px;
-      height: 160px;
-      background: #0a0a12;
-      border-top: 1px solid #2a2a35;
-      z-index: 95;
-      display: none;
-      flex-direction: column
-    }
-
-    #timeline.show {
-      display: flex
-    }
-
-    .tl-toolbar {
-      height: 30px;
-      background: #0d0d14;
-      border-bottom: 1px solid #1e1e28;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 0 8px;
-      flex-shrink: 0
-    }
-
-    .tl-body {
-      flex: 1;
-      display: flex;
-      overflow: hidden
-    }
-
-    .tl-labels {
-      width: 80px;
-      flex-shrink: 0;
-      border-right: 1px solid #1e1e28;
-      background: #0d0d14
-    }
-
-    .tl-lbl {
-      height: 26px;
-      display: flex;
-      align-items: center;
-      padding: 0 8px;
-      font-size: 9px;
-      color: #666;
-      border-bottom: 1px solid #121218
-    }
-
-    .tl-ruler-col {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      overflow: hidden
-    }
-
-    .tl-ruler {
-      height: 16px;
-      background: #080810;
-      border-bottom: 1px solid #1e1e28;
-      position: relative;
-      cursor: pointer;
-      flex-shrink: 0
-    }
-
-    .tl-track-area {
-      flex: 1;
-      position: relative;
-      cursor: pointer
-    }
-
-    .tl-track {
-      height: 26px;
-      border-bottom: 1px solid #121218;
-      position: relative
-    }
-
-    .tl-playhead {
-      position: absolute;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: #f6a82a;
-      pointer-events: none;
-      z-index: 10
-    }
-
-    .tl-playhead::before {
-      content: '▼';
-      color: #f6a82a;
-      position: absolute;
-      top: -12px;
-      left: -4px;
-      font-size: 10px
-    }
-
-    .tl-kf {
-      position: absolute;
-      top: 50%;
-      transform: translate(-50%, -50%) rotate(45deg);
-      width: 8px;
-      height: 8px;
-      background: #f6a82a;
-      border: 1px solid #fff3;
-      cursor: pointer;
-      z-index: 5;
-      transition: background .1s
-    }
-
-    .tl-kf:hover,
-    .tl-kf.selected {
-      background: #fff;
-      border-color: #f6a82a
-    }
-
-    .ruler-tick {
-      position: absolute;
-      top: 0;
-      height: 100%;
-      border-left: 1px solid #1e1e28;
-      font-size: 7px;
-      color: #444;
-      padding-left: 2px;
-      padding-top: 2px;
-      pointer-events: none
-    }
-
-    .tl-duration-label {
-      position: absolute;
-      right: 4px;
-      top: 0;
-      height: 16px;
-      display: flex;
-      align-items: center;
-      font-size: 9px;
-      color: #444
-    }
-
     /* ===== STATUS BAR ===== */
     #status {
       position: fixed;
@@ -975,8 +828,6 @@
           <div>Ctrl+Z/Y — Undo/Redo</div>
           <div>Ctrl+A — Select All</div>
           <div>Del — Delete Selected</div>
-          <div>Space — Play/Pause anim</div>
-          <div>, / . — Prev/Next keyframe</div>
           <div>G — Grid toggle</div>
           <div>W — Wireframe</div>
           <div>R — Reset Camera</div>
@@ -999,23 +850,17 @@
           Group from Selection</button>
       </div>
 
-      <!-- ANIMATION -->
+      <!-- GROUP TRANSFORM -->
       <div class="panel-section" id="anim-section">
-        <div class="panel-title">Animation</div>
-        <div id="anim-no-group" style="font-size:9px;color:#555">Select a group to animate.</div>
+        <div class="panel-title">Group Transform</div>
+        <div id="anim-no-group" style="font-size:9px;color:#555">Select a group to edit.</div>
         <div id="anim-panel">
           <div style="margin-bottom:6px">
-            <span class="small-label">Animation Name</span>
-            <input type="text" id="anim-name" placeholder="Idle, Run, Attack..." style="margin-bottom:4px">
-            <span class="small-label">Duration (s)</span>
-            <input type="number" id="anim-duration" value="2" min="0.1" max="60" step="0.1" onchange="updateDuration()">
+            <span class="small-label">Group Name</span>
+            <input type="text" id="anim-name" placeholder="Group Name" style="margin-bottom:4px" oninput="renameActiveGroupFromField()">
           </div>
           <div style="margin-bottom:6px">
-            <span class="small-label">Current Time</span>
-            <input type="number" id="anim-time" value="0" min="0" step="0.1" onchange="setPlayheadTime(+this.value)">
-          </div>
-          <div style="margin-bottom:6px">
-            <span class="small-label">Transform at this time</span>
+            <span class="small-label">Transform</span>
             <div class="prop-row"><label style="width:50px;color:#e05050">Pos X</label><input type="number" id="kf-px"
                 step="0.1" value="0"></div>
             <div class="prop-row"><label style="width:50px;color:#50e080">Pos Y</label><input type="number" id="kf-py"
@@ -1034,16 +879,6 @@
                 step="0.01" value="1"></div>
             <div class="prop-row"><label style="width:50px;color:#e0c050">Scl Z</label><input type="number" id="kf-sz"
                 step="0.01" value="1"></div>
-          </div>
-          <button class="kf-add-btn" onclick="addKeyframe()" title="Add keyframe at current time">+ Add
-            Keyframe</button>
-          <button class="kf-add-btn" onclick="toggleTimeline()" id="btn-tl" style="margin-top:3px">⏱ Timeline</button>
-          <div style="display:flex;gap:4px;margin-top:6px">
-            <button class="tb-btn" onclick="togglePlayPause()" id="btn-play" style="flex:1">▶ Play</button>
-            <button class="tb-btn" onclick="stopAnim()" style="flex:1">■ Stop</button>
-          </div>
-          <div style="display:flex;gap:4px;margin-top:4px">
-            <button class="tb-btn" onclick="exportAnimJSON()" style="flex:1;font-size:8px">↑ Export JSON</button>
           </div>
           <!-- Gizmo mode -->
           <div style="margin-top:8px">
@@ -1103,46 +938,6 @@
   <!-- CANVAS -->
   <div id="canvas-wrap">
     <canvas id="render-canvas"></canvas>
-  </div>
-
-  <!-- TIMELINE -->
-  <div id="timeline">
-    <div class="tl-toolbar">
-      <span style="font-size:9px;color:#f6a82a;letter-spacing:1px" id="tl-anim-label">TIMELINE</span>
-      <button class="tb-btn" onclick="stopAnim()" style="padding:2px 8px" title="Rewind to start">⏮</button>
-      <button class="tb-btn" onclick="prevKeyframe()" style="padding:2px 8px" title="Previous keyframe [,]">◂</button>
-      <button class="tb-btn" onclick="togglePlayPause()" id="tl-btn-play" style="padding:2px 8px">▶</button>
-      <button class="tb-btn" onclick="nextKeyframe()" style="padding:2px 8px" title="Next keyframe [.]">▸</button>
-      <span style="font-size:9px;color:#555">Time:</span>
-      <input type="number" id="tl-time-input" value="0" min="0" step="0.01"
-        style="width:55px;font-size:9px;padding:2px 4px;background:#1a1a24;border:1px solid #2a2a38;color:#c0b8a8;border-radius:2px;font-family:'Space Mono',monospace"
-        onchange="setPlayheadTime(+this.value)">
-      <span style="font-size:9px;color:#555">/ <span id="tl-total-time">2.0</span>s</span>
-      <div style="flex:1"></div>
-      <button class="tb-btn" onclick="deleteKeyframeAtTime()" style="padding:2px 8px;font-size:9px"
-        title="Delete keyframe at current time">✕ KF</button>
-      <button class="tb-btn" onclick="toggleTimeline()" style="padding:2px 8px">✕</button>
-    </div>
-    <div class="tl-body">
-      <div class="tl-labels">
-        <div class="tl-lbl" style="height:16px;background:#080810;border-bottom:1px solid #1e1e28"></div>
-        <div class="tl-lbl">Position</div>
-        <div class="tl-lbl">Rotation</div>
-        <div class="tl-lbl">Scale</div>
-      </div>
-      <div class="tl-ruler-col">
-        <div class="tl-ruler" id="tl-ruler" onclick="onRulerClick(event)">
-          <div id="tl-ruler-ticks"></div>
-          <div class="tl-duration-label" id="tl-dur-label">2s</div>
-        </div>
-        <div class="tl-track-area" id="tl-tracks" onclick="onTrackAreaClick(event)">
-          <div class="tl-track" id="tl-track-pos"></div>
-          <div class="tl-track" id="tl-track-rot"></div>
-          <div class="tl-track" id="tl-track-scl"></div>
-          <div class="tl-playhead" id="tl-playhead-el" style="left:0"></div>
-        </div>
-      </div>
-    </div>
   </div>
 
   <!-- STATUS BAR -->
@@ -1282,17 +1077,12 @@
     let selectedVoxels = new Set(); // Set of keys "x,y,z"
     let activeGroupId = null;
     let gizmoMode = 'translate';
-    let isPlaying = false;
-    let playTime = 0;
-    let animDuration = 2;
-    let tlVisible = false;
-    const ANIMATION_ENABLED = false;
     const drawMirrorAxes = new Set();
 
     // Main voxel store: key "x,y,z" -> { mesh, color, size, opacity }
     const voxels = new Map();
 
-    // Groups store: id -> { name, voxelKeys: Set, color, group3d: THREE.Group, keyframes: {pos:[],rot:[],scl:[]}, origPositions: Map }
+    // Groups store: id -> { name, voxelKeys: Set, color, group3d: THREE.Group, transform, origPositions: Map }
     const groups = new Map();
     let groupCounter = 0;
 
@@ -1653,7 +1443,7 @@
       scene.add(group3d);
 
       const voxelKeys = new Set(selectedVoxels);
-      groups.set(id, { name, voxelKeys, color: groupColor, group3d, keyframes: { pos: [], rot: [], scl: [] }, origPositions, center: new THREE.Vector3(cx, cy, cz), pivot: new THREE.Vector3(cx, cy, cz), visible: true });
+      groups.set(id, { name, voxelKeys, color: groupColor, group3d, transform: { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, scl: { x: 1, y: 1, z: 1 } }, origPositions, center: new THREE.Vector3(cx, cy, cz), pivot: new THREE.Vector3(cx, cy, cz), visible: true });
       selectedVoxels.clear();
       resetAllHighlights();
       activeGroupId = id;
@@ -1699,10 +1489,9 @@
         document.getElementById('anim-name').value = g.name;
         if (!g.pivot) g.pivot = new THREE.Vector3(0, 0, 0);
         syncPivotUI(g);
-        updateTimelineDisplay();
-        document.getElementById('tl-anim-label').textContent = `TIMELINE — ${g.name.toUpperCase()}`;
         pivotMarker.visible = true;
-        applyGroupTransform(id, playTime);
+        syncKFInputsFromGroup(g);
+        applyGroupTransform(id);
         updateGizmoForGroup(id);
       } else {
         hideAnimPanel();
@@ -1713,6 +1502,15 @@
     function hideAnimPanel() {
       document.getElementById('anim-no-group').style.display = '';
       document.getElementById('anim-panel').style.display = 'none';
+    }
+
+    function renameActiveGroupFromField() {
+      if (!activeGroupId || !groups.has(activeGroupId)) return;
+      const g = groups.get(activeGroupId);
+      const v = document.getElementById('anim-name').value.trim();
+      if (!v) return;
+      g.name = v;
+      renderGroupList();
     }
 
     function renameGroup(id) {
@@ -1760,75 +1558,26 @@
       });
       document.getElementById('stat-groups').textContent = groups.size;
     }
-
-    // ─── ANIMATION SYSTEM ─────────────────────────────────────
-    function updateDuration() {
-      if (!ANIMATION_ENABLED) return;
-      animDuration = Math.max(0.1, +document.getElementById('anim-duration').value);
-      document.getElementById('tl-total-time').textContent = animDuration.toFixed(1);
-      document.getElementById('tl-dur-label').textContent = animDuration.toFixed(1) + 's';
-      buildRulerTicks();
-      updateTimelineDisplay();
-    }
-
-    function setPlayheadTime(t) {
-      if (!ANIMATION_ENABLED) return;
-      playTime = Math.max(0, Math.min(animDuration, t));
-      document.getElementById('anim-time').value = playTime.toFixed(2);
-      document.getElementById('tl-time-input').value = playTime.toFixed(2);
-      updatePlayheadEl();
-      applyGroupTransform(activeGroupId, playTime);
-      syncKFInputsFromTime();
-    }
-
-    function updatePlayheadEl() {
-      const pct = animDuration > 0 ? playTime / animDuration : 0;
-      const el = document.getElementById('tl-playhead-el');
-      if (el) el.style.left = (pct * 100) + '%';
-    }
-
-    function syncKFInputsFromTime() {
-      if (!activeGroupId) return;
-      const g = groups.get(activeGroupId);
+    function syncKFInputsFromGroup(g) {
       if (!g) return;
-      const pt = interpolateGroupTransform(g, playTime);
-      document.getElementById('kf-px').value = pt.pos.x.toFixed(2);
-      document.getElementById('kf-py').value = pt.pos.y.toFixed(2);
-      document.getElementById('kf-pz').value = pt.pos.z.toFixed(2);
-      document.getElementById('kf-rx').value = (pt.rot.x * RAD2DEG).toFixed(1);
-      document.getElementById('kf-ry').value = (pt.rot.y * RAD2DEG).toFixed(1);
-      document.getElementById('kf-rz').value = (pt.rot.z * RAD2DEG).toFixed(1);
-      document.getElementById('kf-sx').value = pt.scl.x.toFixed(3);
-      document.getElementById('kf-sy').value = pt.scl.y.toFixed(3);
-      document.getElementById('kf-sz').value = pt.scl.z.toFixed(3);
-      updateGizmoForGroup(activeGroupId);
+      const tr = g.transform || { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, scl: { x: 1, y: 1, z: 1 } };
+      document.getElementById('kf-px').value = tr.pos.x.toFixed(2);
+      document.getElementById('kf-py').value = tr.pos.y.toFixed(2);
+      document.getElementById('kf-pz').value = tr.pos.z.toFixed(2);
+      document.getElementById('kf-rx').value = (tr.rot.x * RAD2DEG).toFixed(1);
+      document.getElementById('kf-ry').value = (tr.rot.y * RAD2DEG).toFixed(1);
+      document.getElementById('kf-rz').value = (tr.rot.z * RAD2DEG).toFixed(1);
+      document.getElementById('kf-sx').value = tr.scl.x.toFixed(3);
+      document.getElementById('kf-sy').value = tr.scl.y.toFixed(3);
+      document.getElementById('kf-sz').value = tr.scl.z.toFixed(3);
     }
 
-    // addKeyframe defined earlier in animation section
-
-    function interpolateGroupTransform(g, t) {
-      function lerp1D(a, b, f) { return a + (b - a) * f; }
-      function interpTrack(track, prop) {
-        if (!track || track.length === 0) return { x: prop === 'scl' ? 1 : 0, y: prop === 'scl' ? 1 : 0, z: prop === 'scl' ? 1 : 0 };
-        if (track.length === 1) return { x: track[0].x || track[0].x || 0, y: track[0].y || 0, z: track[0].z || 0 };
-        let before = null, after = null;
-        for (let i = 0; i < track.length; i++) {
-          if (track[i].time <= t) before = track[i];
-          if (track[i].time >= t && !after) after = track[i];
-        }
-        if (!before) return { x: after.x || 0, y: after.y || 0, z: after.z || 0 };
-        if (!after || before === after) return { x: before.x || 0, y: before.y || 0, z: before.z || 0 };
-        const f = (t - before.time) / (after.time - before.time);
-        return { x: lerp1D(before.x || 0, after.x || 0, f), y: lerp1D(before.y || 0, after.y || 0, f), z: lerp1D(before.z || 0, after.z || 0, f) };
-      }
-      return {
-        pos: interpTrack(g.keyframes.pos, 'pos'),
-        rot: interpTrack(g.keyframes.rot, 'rot'),
-        scl: interpTrack(g.keyframes.scl, 'scl')
-      };
+    function interpolateGroupTransform(g) {
+      return JSON.parse(JSON.stringify(g.transform || { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, scl: { x: 1, y: 1, z: 1 } }));
     }
 
     function applyGroupTransformFromValues(g, tr) {
+      g.transform = JSON.parse(JSON.stringify(tr));
       const piv = g.pivot || new THREE.Vector3(0, 0, 0);
       g.group3d.rotation.set(tr.rot.x, tr.rot.y, tr.rot.z);
       g.group3d.scale.set(tr.scl.x, tr.scl.y, tr.scl.z);
@@ -1848,269 +1597,11 @@
       }
     }
 
-    function applyGroupTransform(id, t) {
+    function applyGroupTransform(id) {
       if (!id) return;
       const g = groups.get(id);
       if (!g) return;
-      const tr = interpolateGroupTransform(g, t);
-      applyGroupTransformFromValues(g, tr);
-    }
-
-    // ─── PIVOT CONTROLS ──────────────────────────────────────
-    function getPivotPresetValue(preset) {
-      if (!activeGroupId) return new THREE.Vector3();
-      const g = groups.get(activeGroupId);
-      if (!g) return new THREE.Vector3();
-
-      // Collect world positions of all voxels in group
-      let minX = Infinity, minY = Infinity, minZ = Infinity;
-      let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
-      g.voxelKeys.forEach(k => {
-        const vd = voxels.get(k);
-        if (!vd) return;
-        const wp = vd.mesh.getWorldPosition(new THREE.Vector3());
-        const s = vd.size;
-        minX = Math.min(minX, wp.x - s * 0.5); maxX = Math.max(maxX, wp.x + s * 0.5);
-        minY = Math.min(minY, wp.y - s * 0.5); maxY = Math.max(maxY, wp.y + s * 0.5);
-        minZ = Math.min(minZ, wp.z - s * 0.5); maxZ = Math.max(maxZ, wp.z + s * 0.5);
-      });
-      if (preset === 'center') return new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);
-      if (preset === 'bottom') return new THREE.Vector3((minX + maxX) / 2, minY, (minZ + maxZ) / 2);
-      if (preset === 'origin') return new THREE.Vector3(0, 0, 0);
-      return new THREE.Vector3();
-    }
-
-    function setPivotPreset(preset) {
-      if (!activeGroupId) return;
-      const g = groups.get(activeGroupId);
-      if (!g) return;
-      const p = getPivotPresetValue(preset);
-      g.pivot = p.clone();
-      document.getElementById('piv-x').value = p.x.toFixed(2);
-      document.getElementById('piv-y').value = p.y.toFixed(2);
-      document.getElementById('piv-z').value = p.z.toFixed(2);
-      ['center', 'bottom', 'origin'].forEach(s => document.getElementById('pivot-' + s).classList.toggle('active', s === preset));
-      applyGroupTransform(activeGroupId, playTime);
-      updateGizmoForGroup(activeGroupId);
-    }
-
-    function setPivotManual() {
-      if (!activeGroupId) return;
-      const g = groups.get(activeGroupId);
-      if (!g) return;
-      g.pivot = new THREE.Vector3(
-        +document.getElementById('piv-x').value,
-        +document.getElementById('piv-y').value,
-        +document.getElementById('piv-z').value
-      );
-      ['center', 'bottom', 'origin'].forEach(s => document.getElementById('pivot-' + s).classList.remove('active'));
-      applyGroupTransform(activeGroupId, playTime);
-      updateGizmoForGroup(activeGroupId);
-    }
-
-    function syncPivotUI(g) {
-      const piv = g.pivot || new THREE.Vector3();
-      document.getElementById('piv-x').value = piv.x.toFixed(2);
-      document.getElementById('piv-y').value = piv.y.toFixed(2);
-      document.getElementById('piv-z').value = piv.z.toFixed(2);
-    }
-
-    function setPlayButtonState(playing) {
-      document.getElementById('btn-play').textContent = playing ? '⏸ Pause' : '▶ Play';
-      document.getElementById('tl-btn-play').textContent = playing ? '⏸' : '▶';
-    }
-
-    function togglePlayPause() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      if (isPlaying) { pauseAnim(); } else { playAnim(); }
-    }
-
-    function playAnim() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      if (!activeGroupId) { notify('Select a group first'); return; }
-      isPlaying = true;
-      setPlayButtonState(true);
-    }
-
-    function pauseAnim() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      isPlaying = false;
-      setPlayButtonState(false);
-    }
-
-    function getAllKeyframeTimes() {
-      if (!activeGroupId) return [];
-      const g = groups.get(activeGroupId);
-      if (!g) return [];
-      const times = new Set();
-      ['pos', 'rot', 'scl'].forEach(prop => { (g.keyframes[prop] || []).forEach(k => times.add(k.time)); });
-      return [...times].sort((a, b) => a - b);
-    }
-
-    function prevKeyframe() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      const times = getAllKeyframeTimes();
-      const prev = times.filter(t => t < playTime - 0.001);
-      if (prev.length > 0) setPlayheadTime(prev[prev.length - 1]);
-      else if (times.length > 0) setPlayheadTime(times[times.length - 1]); // wrap to last
-    }
-
-    function nextKeyframe() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      const times = getAllKeyframeTimes();
-      const next = times.filter(t => t > playTime + 0.001);
-      if (next.length > 0) setPlayheadTime(next[0]);
-      else if (times.length > 0) setPlayheadTime(times[0]); // wrap to first
-    }
-
-    function deleteKeyframeAtTime() {
-      if (!activeGroupId) return;
-      const g = groups.get(activeGroupId);
-      if (!g) return;
-      const t = playTime;
-      const snap = 0.02;
-      let deleted = false;
-      const beforeKFs = JSON.parse(JSON.stringify(g.keyframes));
-      ['pos', 'rot', 'scl'].forEach(prop => {
-        const before = g.keyframes[prop].length;
-        g.keyframes[prop] = g.keyframes[prop].filter(k => Math.abs(k.time - t) > snap);
-        if (g.keyframes[prop].length < before) deleted = true;
-      });
-      if (deleted) {
-        updateTimelineDisplay();
-        notify(`Keyframe at ${t.toFixed(2)}s deleted`);
-        const afterKFs = JSON.parse(JSON.stringify(g.keyframes));
-        executeCommand({
-          execute() { const grp = groups.get(activeGroupId); if (grp) { grp.keyframes = JSON.parse(JSON.stringify(afterKFs)); updateTimelineDisplay(); } },
-          undo() { const grp = groups.get(activeGroupId); if (grp) { grp.keyframes = JSON.parse(JSON.stringify(beforeKFs)); updateTimelineDisplay(); } }
-        });
-      } else {
-        notify('No keyframe near current time');
-      }
-    }
-
-    // Make addKeyframe undo-able
-    const _addKeyframeOrig = addKeyframe;
-    // Override addKeyframe to record undo
-    function addKeyframe() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      if (!activeGroupId) return;
-      const g = groups.get(activeGroupId);
-      if (!g) return;
-      const beforeKFs = JSON.parse(JSON.stringify(g.keyframes));
-      const t = playTime;
-      const kfPos = { x: +document.getElementById('kf-px').value, y: +document.getElementById('kf-py').value, z: +document.getElementById('kf-pz').value };
-      const kfRot = { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD };
-      const kfScl = { x: +document.getElementById('kf-sx').value, y: +document.getElementById('kf-sy').value, z: +document.getElementById('kf-sz').value };
-      ['pos', 'rot', 'scl'].forEach(prop => {
-        g.keyframes[prop] = g.keyframes[prop].filter(k => Math.abs(k.time - t) > 0.001);
-        const vals = prop === 'pos' ? kfPos : prop === 'rot' ? kfRot : kfScl;
-        g.keyframes[prop].push({ time: t, ...vals });
-        g.keyframes[prop].sort((a, b) => a.time - b.time);
-      });
-      applyGroupTransform(activeGroupId, t);
-      updateTimelineDisplay();
-      notify(`Keyframe added at ${t.toFixed(2)}s`);
-      const afterKFs = JSON.parse(JSON.stringify(g.keyframes));
-      executeCommand({
-        execute() { const grp = groups.get(activeGroupId); if (grp) { grp.keyframes = JSON.parse(JSON.stringify(afterKFs)); updateTimelineDisplay(); } },
-        undo() { const grp = groups.get(activeGroupId); if (grp) { grp.keyframes = JSON.parse(JSON.stringify(beforeKFs)); updateTimelineDisplay(); } }
-      });
-    }
-
-
-    function stopAnim() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      isPlaying = false;
-      playTime = 0;
-      setPlayButtonState(false);
-      setPlayheadTime(0);
-    }
-
-    // ─── TIMELINE UI ──────────────────────────────────────────
-    function toggleTimeline() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      tlVisible = !tlVisible;
-      document.getElementById('timeline').classList.toggle('show', tlVisible);
-      document.getElementById('canvas-wrap').classList.toggle('tl-open', tlVisible);
-      if (tlVisible) { buildRulerTicks(); updateTimelineDisplay(); }
-      resize();
-    }
-
-    function buildRulerTicks() {
-      const el = document.getElementById('tl-ruler-ticks');
-      el.innerHTML = '';
-      const steps = Math.ceil(animDuration / 0.5);
-      for (let i = 0; i <= steps; i++) {
-        const t = i * 0.5;
-        const pct = t / animDuration * 100;
-        const tick = document.createElement('div');
-        tick.className = 'ruler-tick';
-        tick.style.left = pct + '%';
-        tick.textContent = t.toFixed(1) + 's';
-        el.appendChild(tick);
-      }
-    }
-
-    function updateTimelineDisplay() {
-      clearTimelineKFs();
-      if (!activeGroupId) return;
-      const g = groups.get(activeGroupId);
-      if (!g) return;
-      const trackEls = { pos: document.getElementById('tl-track-pos'), rot: document.getElementById('tl-track-rot'), scl: document.getElementById('tl-track-scl') };
-      const propLabels = { pos: 'Position', rot: 'Rotation', scl: 'Scale' };
-      ['pos', 'rot', 'scl'].forEach(prop => {
-        const track = g.keyframes[prop] || [];
-        track.forEach(kf => {
-          const pct = kf.time / animDuration * 100;
-          const isActive = Math.abs(kf.time - playTime) < 0.015;
-          const div = document.createElement('div');
-          div.className = 'tl-kf' + (isActive ? ' selected' : '');
-          div.style.left = pct + '%';
-          const vals = `x:${(kf.x || 0).toFixed(2)} y:${(kf.y || 0).toFixed(2)} z:${(kf.z || 0).toFixed(2)}`;
-          div.title = `[${propLabels[prop]}] t=${kf.time.toFixed(2)}s\n${vals}`;
-          div.onclick = e => { e.stopPropagation(); setPlayheadTime(kf.time); };
-          div.ondblclick = e => { e.stopPropagation(); deleteKeyframeAtTime(); };
-          trackEls[prop].appendChild(div);
-        });
-      });
-      updatePlayheadEl();
-    }
-
-    function clearTimelineKFs() {
-      ['tl-track-pos', 'tl-track-rot', 'tl-track-scl'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) el.querySelectorAll('.tl-kf').forEach(k => k.remove());
-      });
-    }
-
-    function onRulerClick(e) {
-      const rect = document.getElementById('tl-ruler').getBoundingClientRect();
-      const pct = (e.clientX - rect.left) / rect.width;
-      setPlayheadTime(pct * animDuration);
-    }
-
-    function onTrackAreaClick(e) {
-      const rect = document.getElementById('tl-tracks').getBoundingClientRect();
-      const pct = (e.clientX - rect.left) / rect.width;
-      setPlayheadTime(pct * animDuration);
-    }
-
-    function exportAnimJSON() {
-      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
-      if (!activeGroupId) return;
-      const g = groups.get(activeGroupId);
-      const data = {
-        name: g.name,
-        duration: animDuration,
-        tracks: {
-          position: g.keyframes.pos.map(k => ({ time: k.time, x: k.x || 0, y: k.y || 0, z: k.z || 0 })),
-          rotation: g.keyframes.rot.map(k => ({ time: k.time, x: k.x || 0, y: k.y || 0, z: k.z || 0 })),
-          scale: g.keyframes.scl.map(k => ({ time: k.time, x: k.x || 1, y: k.y || 1, z: k.z || 1 }))
-        }
-      };
-      downloadJSON(data, (g.name || 'animation') + '.json');
-      notify('Animation JSON exported');
+      applyGroupTransformFromValues(g, interpolateGroupTransform(g));
     }
 
     // ─── GIZMO (Transform Handles) ────────────────────────────
@@ -2134,7 +1625,7 @@
       if (gizmoMode === 'translate') {
         axes.forEach((axis, i) => {
           const shaftGeo = new THREE.CylinderGeometry(arrowR, arrowR, arrowLen, 8);
-          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i] });
+          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i], depthTest: false, depthWrite: false });
           const shaft = new THREE.Mesh(shaftGeo, mat);
           const headGeo = new THREE.ConeGeometry(arrowHead, arrowHead * 2, 8);
           const head = new THREE.Mesh(headGeo, mat.clone());
@@ -2151,7 +1642,7 @@
       } else if (gizmoMode === 'rotate') {
         axes.forEach((axis, i) => {
           const geo = new THREE.TorusGeometry(1.8, 0.06, 8, 32);
-          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i] });
+          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i], depthTest: false, depthWrite: false });
           const ring = new THREE.Mesh(geo, mat);
           // Torus defaults to XY plane. Rotate each ring to be perpendicular to its axis:
           // X ring → lies in YZ plane → rotate Y by PI/2
@@ -2167,7 +1658,7 @@
       } else if (gizmoMode === 'scale') {
         axes.forEach((axis, i) => {
           const shaftGeo = new THREE.CylinderGeometry(arrowR, arrowR, arrowLen, 8);
-          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i] });
+          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i], depthTest: false, depthWrite: false });
           const shaft = new THREE.Mesh(shaftGeo, mat);
           const cubeGeo = new THREE.BoxGeometry(arrowHead * 2, arrowHead * 2, arrowHead * 2);
           const cube = new THREE.Mesh(cubeGeo, mat.clone());
@@ -2182,6 +1673,7 @@
           gizmoGroup.add(group);
         });
       }
+      gizmoGroup.traverse(obj => { if (obj.isMesh) obj.renderOrder = 1000; });
     }
 
     function setGizmoMode(mode) {
@@ -2196,7 +1688,7 @@
       if (!id || !groups.has(id)) { gizmoGroup.visible = false; return; }
       const g = groups.get(id);
       if (g.visible === false) { gizmoGroup.visible = false; return; }
-      const tr = interpolateGroupTransform(g, playTime);
+      const tr = interpolateGroupTransform(g);
       const piv = g.pivot || new THREE.Vector3(0, 0, 0);
       gizmoGroup.position.set(tr.pos.x + piv.x, tr.pos.y + piv.y, tr.pos.z + piv.z);
       gizmoGroup.visible = true;
@@ -2585,7 +2077,7 @@
             gizmoDragStartMouse.set(e.clientX, e.clientY);
             if (activeGroupId) {
               const g = groups.get(activeGroupId);
-              const cur = interpolateGroupTransform(g, playTime);
+              const cur = interpolateGroupTransform(g);
               gizmoDragStartValue = {
                 pos: { ...cur.pos },
                 rot: { ...cur.rot },
@@ -2733,36 +2225,20 @@
         const g = groups.get(id);
         if (g) {
           const before = gizmoDragStartValue;
-          const t = playTime;
-          const afterPos = { x: +document.getElementById('kf-px').value, y: +document.getElementById('kf-py').value, z: +document.getElementById('kf-pz').value };
-          const afterRot = { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD };
-          const afterScl = { x: +document.getElementById('kf-sx').value, y: +document.getElementById('kf-sy').value, z: +document.getElementById('kf-sz').value };
-          // Only record if something changed
-          const changed = JSON.stringify(before) !== JSON.stringify({ pos: afterPos, rot: afterRot, scl: afterScl });
-          if (changed) {
-            // Capture gizmo values at time of release for after-state keyframe
-            const afterKFPos = { x: +document.getElementById('kf-px').value, y: +document.getElementById('kf-py').value, z: +document.getElementById('kf-pz').value };
-            const afterKFRot = { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD };
-            const afterKFScl = { x: +document.getElementById('kf-sx').value, y: +document.getElementById('kf-sy').value, z: +document.getElementById('kf-sz').value };
-            const beforeKFs = JSON.parse(JSON.stringify(g.keyframes));
-            // apply current state as keyframe
-            const applyAfter = () => {
+          const after = {
+            pos: { x: +document.getElementById('kf-px').value, y: +document.getElementById('kf-py').value, z: +document.getElementById('kf-pz').value },
+            rot: { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD },
+            scl: { x: +document.getElementById('kf-sx').value, y: +document.getElementById('kf-sy').value, z: +document.getElementById('kf-sz').value }
+          };
+          if (JSON.stringify(before) !== JSON.stringify(after)) {
+            const applyState = state => {
               const grp = groups.get(id); if (!grp) return;
-              ['pos', 'rot', 'scl'].forEach(prop => {
-                grp.keyframes[prop] = grp.keyframes[prop].filter(k => Math.abs(k.time - t) > 0.001);
-              });
-              grp.keyframes.pos.push({ time: t, ...afterKFPos }); grp.keyframes.pos.sort((a, b) => a.time - b.time);
-              grp.keyframes.rot.push({ time: t, ...afterKFRot }); grp.keyframes.rot.sort((a, b) => a.time - b.time);
-              grp.keyframes.scl.push({ time: t, ...afterKFScl }); grp.keyframes.scl.sort((a, b) => a.time - b.time);
-              applyGroupTransform(id, t); updateTimelineDisplay();
+              applyGroupTransformFromValues(grp, state);
+              syncKFInputsFromGroup(grp);
+              updateGizmoForGroup(id);
             };
-            const applyBefore = () => {
-              const grp = groups.get(id); if (!grp) return;
-              grp.keyframes = JSON.parse(JSON.stringify(beforeKFs));
-              applyGroupTransform(id, t); updateTimelineDisplay();
-            };
-            applyAfter(); // finalize state
-            executeCommand({ execute: applyAfter, undo: applyBefore });
+            applyState(after);
+            executeCommand({ execute() { applyState(after); }, undo() { applyState(before); } });
           }
         }
         gizmoDragStartValue = null;
@@ -2818,7 +2294,7 @@
 
       if (gizmoMode === 'translate') {
         const delta = combined * sensitivity;
-        const cur = interpolateGroupTransform(g, playTime);
+        const cur = interpolateGroupTransform(g);
         const newPos = { ...cur.pos };
         if (gizmoDragAxis === 'x') newPos.x += dx * sensitivity;
         if (gizmoDragAxis === 'y') newPos.y -= dy * sensitivity;
@@ -2834,7 +2310,7 @@
         updateGizmoForGroup(activeGroupId);
       } else if (gizmoMode === 'rotate') {
         const delta = combined * rotSensitivity;
-        const cur = interpolateGroupTransform(g, playTime);
+        const cur = interpolateGroupTransform(g);
         if (gizmoDragAxis === 'x') { const v = +document.getElementById('kf-rx').value + delta * RAD2DEG; document.getElementById('kf-rx').value = v.toFixed(1); }
         if (gizmoDragAxis === 'y') { const v = +document.getElementById('kf-ry').value + delta * RAD2DEG; document.getElementById('kf-ry').value = v.toFixed(1); }
         if (gizmoDragAxis === 'z') { const v = +document.getElementById('kf-rz').value + delta * RAD2DEG; document.getElementById('kf-rz').value = v.toFixed(1); }
@@ -2845,7 +2321,7 @@
         });
         updateGizmoForGroup(activeGroupId);
       } else if (gizmoMode === 'scale') {
-        const cur = interpolateGroupTransform(g, playTime);
+        const cur = interpolateGroupTransform(g);
         if (gizmoDragAxis === 'x') { const v = Math.max(0.01, +document.getElementById('kf-sx').value + combined * scaleSensitivity); document.getElementById('kf-sx').value = v.toFixed(3); }
         if (gizmoDragAxis === 'y') { const v = Math.max(0.01, +document.getElementById('kf-sy').value + combined * scaleSensitivity); document.getElementById('kf-sy').value = v.toFixed(3); }
         if (gizmoDragAxis === 'z') { const v = Math.max(0.01, +document.getElementById('kf-sz').value + combined * scaleSensitivity); document.getElementById('kf-sz').value = v.toFixed(3); }
@@ -3460,8 +2936,7 @@ d 1.0
       const data = {
         version: 1,
         voxels: [],
-        groups: [],
-        animations: []
+        groups: []
       };
       voxels.forEach((v, key) => {
         data.voxels.push({ key, x: v.mesh.userData.x, y: v.mesh.userData.y, z: v.mesh.userData.z, color: v.color, size: v.size, opacity: v.opacity });
@@ -3470,9 +2945,8 @@ d 1.0
         data.groups.push({
           id, name: g.name, color: g.color,
           voxelKeys: [...g.voxelKeys],
-          keyframes: g.keyframes,
           visible: g.visible !== false,
-          animDuration
+          transform: g.transform
         });
       });
       downloadJSON(data, 'voxforge_project.voxforge');
@@ -3502,13 +2976,10 @@ d 1.0
               scene.add(group3d);
               const groupVisible = gd.visible !== false;
               group3d.visible = groupVisible;
-              groups.set(gd.id, { name: gd.name, voxelKeys, color: gd.color, group3d, keyframes: gd.keyframes || { pos: [], rot: [], scl: [] }, origPositions: new Map(), visible: groupVisible });
+              groups.set(gd.id, { name: gd.name, voxelKeys, color: gd.color, group3d, transform: gd.transform || { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, scl: { x: 1, y: 1, z: 1 } }, origPositions: new Map(), visible: groupVisible, pivot: new THREE.Vector3(0, 0, 0) });
               groupCounter = Math.max(groupCounter, parseInt(gd.id.replace('grp_', '')) || 0);
-              if (gd.animDuration) animDuration = gd.animDuration;
             });
           }
-          document.getElementById('anim-duration').value = animDuration;
-          updateDuration();
           updateStats(); renderGroupList();
           notify('Project loaded: ' + file.name);
         } catch (err) { notify('Error loading: ' + err.message); }
@@ -3564,10 +3035,7 @@ d 1.0
       else if (e.key === 'g' || e.key === 'G') toggleGrid();
       else if (e.key === 'w' || e.key === 'W') toggleWireframe();
       else if (e.key === 'r' || e.key === 'R') resetCamera();
-      else if (e.key === 'Escape') { deselectAll(); if (ANIMATION_ENABLED) stopAnim(); }
-      else if (ANIMATION_ENABLED && e.key === ' ') { e.preventDefault(); togglePlayPause(); }
-      else if (ANIMATION_ENABLED && e.key === ',') prevKeyframe();
-      else if (ANIMATION_ENABLED && e.key === '.') nextKeyframe();
+      else if (e.key === 'Escape') { deselectAll(); }
     });
 
     // ─── RESIZE ───────────────────────────────────────────────
@@ -3590,17 +3058,6 @@ d 1.0
       requestAnimationFrame(animate);
       const dt = (timestamp - lastFrameTime) / 1000;
       lastFrameTime = timestamp;
-
-      // Play animation
-      if (ANIMATION_ENABLED && isPlaying && activeGroupId) {
-        playTime += dt;
-        if (playTime > animDuration) playTime = 0; // loop
-        applyGroupTransform(activeGroupId, playTime);
-        updatePlayheadEl();
-        document.getElementById('anim-time').value = playTime.toFixed(2);
-        document.getElementById('tl-time-input').value = playTime.toFixed(2);
-        syncKFInputsFromTime();
-      }
 
       // FPS counter
       frameCount++;
@@ -3625,17 +3082,24 @@ d 1.0
     // ─── INITIAL SETUP ────────────────────────────────────────
     buildPalette();
     buildGizmo();
+    ['kf-px', 'kf-py', 'kf-pz', 'kf-rx', 'kf-ry', 'kf-rz', 'kf-sx', 'kf-sy', 'kf-sz'].forEach(id => {
+      document.getElementById(id).addEventListener('input', () => {
+        if (!activeGroupId) return;
+        const g = groups.get(activeGroupId);
+        if (!g) return;
+        applyGroupTransformFromValues(g, {
+          pos: { x: +document.getElementById('kf-px').value, y: +document.getElementById('kf-py').value, z: +document.getElementById('kf-pz').value },
+          rot: { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD },
+          scl: { x: Math.max(0.01, +document.getElementById('kf-sx').value), y: Math.max(0.01, +document.getElementById('kf-sy').value), z: Math.max(0.01, +document.getElementById('kf-sz').value) }
+        });
+        updateGizmoForGroup(activeGroupId);
+      });
+    });
     setTool('add');
     resize();
-    updateDuration();
+    
     updateStats();
     document.getElementById('btn-grid').classList.add('active');
-    if (!ANIMATION_ENABLED) {
-      const animSection = document.getElementById('anim-section');
-      const timeline = document.getElementById('timeline');
-      if (animSection) animSection.style.display = 'none';
-      if (timeline) timeline.classList.remove('show');
-    }
 
     // Place a few starter voxels for demonstration
     function placeStarterScene() {
