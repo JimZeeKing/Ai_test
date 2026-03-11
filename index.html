@@ -1,0 +1,3062 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VoxForge — Voxel Editor</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap');
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box
+    }
+
+    body {
+      background: #12121a;
+      color: #ddd0b8;
+      font-family: 'Space Mono', monospace;
+      overflow: hidden;
+      height: 100vh;
+      width: 100vw;
+      user-select: none
+    }
+
+    ::-webkit-scrollbar {
+      width: 4px;
+      height: 4px
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #0a0a10
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #3a3a4a;
+      border-radius: 2px
+    }
+
+    /* ===== TOP BAR ===== */
+    #topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 42px;
+      background: #0d0d14;
+      border-bottom: 1px solid #2a2a35;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      z-index: 100
+    }
+
+    .logo {
+      font-family: 'Syne', sans-serif;
+      font-size: 15px;
+      font-weight: 800;
+      color: #f6a82a;
+      letter-spacing: 3px;
+      margin-right: 10px;
+      flex-shrink: 0
+    }
+
+    .logo span {
+      color: #fff4
+    }
+
+    .sep {
+      width: 1px;
+      height: 22px;
+      background: #2a2a35;
+      margin: 0 2px;
+      flex-shrink: 0
+    }
+
+    .tb-btn {
+      background: #1e1e28;
+      border: 1px solid #2e2e3e;
+      color: #b0a898;
+      padding: 3px 9px;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      border-radius: 2px;
+      transition: all .15s;
+      white-space: nowrap;
+      flex-shrink: 0
+    }
+
+    .tb-btn:hover {
+      background: #28283a;
+      border-color: #f6a82a;
+      color: #f6a82a
+    }
+
+    .tb-btn.active {
+      background: #f6a82a22;
+      border-color: #f6a82a;
+      color: #f6a82a
+    }
+
+    .tb-btn:disabled {
+      opacity: .4;
+      cursor: default
+    }
+
+    .tb-spacer {
+      flex: 1
+    }
+
+    #fps-counter {
+      font-size: 9px;
+      color: #555;
+      margin-right: 4px
+    }
+
+    /* ===== PANELS ===== */
+    #left-panel {
+      position: fixed;
+      top: 42px;
+      left: 0;
+      width: 188px;
+      bottom: 0;
+      background: #0d0d14;
+      border-right: 1px solid #2a2a35;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 90
+    }
+
+    #right-panel {
+      position: fixed;
+      top: 42px;
+      right: 0;
+      width: 188px;
+      bottom: 0;
+      background: #0d0d14;
+      border-left: 1px solid #2a2a35;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 90
+    }
+
+    .panel-scroll {
+      overflow-y: auto;
+      flex: 1
+    }
+
+    .panel-section {
+      padding: 10px;
+      border-bottom: 1px solid #1e1e28
+    }
+
+    .panel-title {
+      font-size: 8px;
+      letter-spacing: 2.5px;
+      color: #f6a82a;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600
+    }
+
+    /* ===== TOOL BUTTONS ===== */
+    .tool-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 3px
+    }
+
+    .tool-btn {
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      color: #a09888;
+      padding: 7px 4px;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      border-radius: 2px;
+      text-align: center;
+      transition: all .15s
+    }
+
+    .tool-btn:hover {
+      background: #222230;
+      border-color: #f6a82a55
+    }
+
+    .tool-btn.active {
+      background: #f6a82a18;
+      border-color: #f6a82a;
+      color: #f6a82a
+    }
+
+    .tool-icon {
+      font-size: 15px;
+      display: block;
+      margin-bottom: 2px;
+      line-height: 1
+    }
+
+    /* ===== COLOR SYSTEM ===== */
+    .color-palette {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 3px;
+      margin-bottom: 6px
+    }
+
+    .c-swatch {
+      width: 100%;
+      aspect-ratio: 1;
+      border-radius: 2px;
+      cursor: pointer;
+      border: 2px solid transparent;
+      transition: all .1s
+    }
+
+    .c-swatch:hover,
+    .c-swatch.active {
+      border-color: #fff;
+      transform: scale(1.12)
+    }
+
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px
+    }
+
+    .color-row label {
+      font-size: 9px;
+      color: #666;
+      min-width: 30px
+    }
+
+    input[type="color"] {
+      width: 28px;
+      height: 22px;
+      border: 1px solid #3a3a4a;
+      background: #0d0d14;
+      cursor: pointer;
+      border-radius: 2px;
+      padding: 1px
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #f6a82a;
+      height: 14px
+    }
+
+    input[type="number"],
+    input[type="text"],
+    select {
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      color: #c0b8a8;
+      padding: 3px 6px;
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      border-radius: 2px;
+      width: 100%
+    }
+
+    select option {
+      background: #1a1a24
+    }
+
+    input[type="number"]:focus,
+    input[type="text"]:focus,
+    select:focus {
+      outline: none;
+      border-color: #f6a82a
+    }
+
+    /* ===== SIZE PRESETS ===== */
+    .size-btns {
+      display: flex;
+      gap: 3px
+    }
+
+    .size-btn {
+      flex: 1;
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      color: #a09888;
+      padding: 4px 0;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      border-radius: 2px;
+      text-align: center;
+      transition: all .15s
+    }
+
+    .size-btn.active {
+      background: #f6a82a18;
+      border-color: #f6a82a;
+      color: #f6a82a
+    }
+
+    /* ===== CANVAS ===== */
+    #canvas-wrap {
+      position: fixed;
+      top: 42px;
+      left: 188px;
+      right: 188px;
+      bottom: 22px;
+      z-index: 1
+    }
+
+    #canvas-wrap.tl-open {
+      bottom: 160px
+    }
+
+    #render-canvas {
+      display: block;
+      width: 100% !important;
+      height: 100% !important;
+      cursor: crosshair
+    }
+
+    /* ===== GROUPS ===== */
+    .grp-item {
+      padding: 5px 8px;
+      border-bottom: 1px solid #161620;
+      cursor: pointer;
+      font-size: 10px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: background .1s
+    }
+
+    .grp-item:hover {
+      background: #161620
+    }
+
+    .grp-item.active {
+      background: #f6a82a15;
+      border-left: 2px solid #f6a82a
+    }
+
+    .grp-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      flex-shrink: 0
+    }
+
+    .grp-name {
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap
+    }
+
+    .grp-count {
+      font-size: 9px;
+      color: #555
+    }
+
+    .grp-actions {
+      display: flex;
+      gap: 3px;
+      flex-shrink: 0
+    }
+
+    .grp-btn {
+      background: none;
+      border: none;
+      color: #666;
+      cursor: pointer;
+      font-size: 10px;
+      padding: 1px 3px;
+      border-radius: 2px
+    }
+
+    .grp-btn:hover {
+      color: #f6a82a;
+      background: #f6a82a22
+    }
+
+    /* ===== KEYFRAME / ANIM PROPS ===== */
+    .anim-prop {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-bottom: 4px
+    }
+
+    .anim-prop label {
+      font-size: 9px;
+      color: #666;
+      width: 16px
+    }
+
+    .anim-prop input {
+      flex: 1;
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      color: #c0b8a8;
+      padding: 2px 4px;
+      font-size: 9px;
+      font-family: 'Space Mono', monospace;
+      border-radius: 2px
+    }
+
+    .kf-add-btn {
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      color: #f6a82a;
+      padding: 3px 8px;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      border-radius: 2px;
+      width: 100%;
+      margin-top: 4px
+    }
+
+    .kf-add-btn:hover {
+      background: #f6a82a22
+    }
+
+    /* ===== TIMELINE ===== */
+    #timeline {
+      position: fixed;
+      left: 188px;
+      right: 188px;
+      bottom: 22px;
+      height: 160px;
+      background: #0a0a12;
+      border-top: 1px solid #2a2a35;
+      z-index: 95;
+      display: none;
+      flex-direction: column
+    }
+
+    #timeline.show {
+      display: flex
+    }
+
+    .tl-toolbar {
+      height: 30px;
+      background: #0d0d14;
+      border-bottom: 1px solid #1e1e28;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      flex-shrink: 0
+    }
+
+    .tl-body {
+      flex: 1;
+      display: flex;
+      overflow: hidden
+    }
+
+    .tl-labels {
+      width: 80px;
+      flex-shrink: 0;
+      border-right: 1px solid #1e1e28;
+      background: #0d0d14
+    }
+
+    .tl-lbl {
+      height: 26px;
+      display: flex;
+      align-items: center;
+      padding: 0 8px;
+      font-size: 9px;
+      color: #666;
+      border-bottom: 1px solid #121218
+    }
+
+    .tl-ruler-col {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow: hidden
+    }
+
+    .tl-ruler {
+      height: 16px;
+      background: #080810;
+      border-bottom: 1px solid #1e1e28;
+      position: relative;
+      cursor: pointer;
+      flex-shrink: 0
+    }
+
+    .tl-track-area {
+      flex: 1;
+      position: relative;
+      cursor: pointer
+    }
+
+    .tl-track {
+      height: 26px;
+      border-bottom: 1px solid #121218;
+      position: relative
+    }
+
+    .tl-playhead {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: #f6a82a;
+      pointer-events: none;
+      z-index: 10
+    }
+
+    .tl-playhead::before {
+      content: '▼';
+      color: #f6a82a;
+      position: absolute;
+      top: -12px;
+      left: -4px;
+      font-size: 10px
+    }
+
+    .tl-kf {
+      position: absolute;
+      top: 50%;
+      transform: translate(-50%, -50%) rotate(45deg);
+      width: 8px;
+      height: 8px;
+      background: #f6a82a;
+      border: 1px solid #fff3;
+      cursor: pointer;
+      z-index: 5;
+      transition: background .1s
+    }
+
+    .tl-kf:hover,
+    .tl-kf.selected {
+      background: #fff;
+      border-color: #f6a82a
+    }
+
+    .ruler-tick {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      border-left: 1px solid #1e1e28;
+      font-size: 7px;
+      color: #444;
+      padding-left: 2px;
+      padding-top: 2px;
+      pointer-events: none
+    }
+
+    .tl-duration-label {
+      position: absolute;
+      right: 4px;
+      top: 0;
+      height: 16px;
+      display: flex;
+      align-items: center;
+      font-size: 9px;
+      color: #444
+    }
+
+    /* ===== STATUS BAR ===== */
+    #status {
+      position: fixed;
+      bottom: 0;
+      left: 188px;
+      right: 188px;
+      height: 22px;
+      background: #f6a82a;
+      color: #1a1a0a;
+      display: flex;
+      align-items: center;
+      padding: 0 10px;
+      font-size: 9px;
+      gap: 12px;
+      z-index: 99;
+      letter-spacing: .5px;
+      font-family: 'Syne', sans-serif
+    }
+
+    #status span {
+      opacity: .7
+    }
+
+    #status b {
+      opacity: 1;
+      font-weight: 700
+    }
+
+    /* ===== GHOST PREVIEW ===== */
+    #ghost-info {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: #0008;
+      color: #f6a82a;
+      padding: 3px 10px;
+      font-size: 9px;
+      border-radius: 2px;
+      pointer-events: none;
+      z-index: 50;
+      opacity: 0;
+      transition: opacity .2s
+    }
+
+    #ghost-info.show {
+      opacity: 1
+    }
+
+    /* ===== NOTIFICATION ===== */
+    #notif {
+      position: fixed;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%) translateY(-8px);
+      background: #f6a82a;
+      color: #1a1a0a;
+      padding: 5px 14px;
+      border-radius: 2px;
+      font-size: 10px;
+      z-index: 200;
+      opacity: 0;
+      transition: opacity .25s, transform .25s;
+      pointer-events: none;
+      font-family: 'Syne', sans-serif;
+      font-weight: 600
+    }
+
+    #notif.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0)
+    }
+
+    /* ===== MODAL ===== */
+    .modal-bg {
+      position: fixed;
+      inset: 0;
+      background: #000b;
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center
+    }
+
+    .modal-box {
+      background: #141420;
+      border: 1px solid #3a3a4a;
+      border-radius: 3px;
+      padding: 18px;
+      min-width: 260px
+    }
+
+    .modal-box h3 {
+      color: #f6a82a;
+      margin-bottom: 12px;
+      font-size: 12px;
+      letter-spacing: 1px;
+      font-family: 'Syne', sans-serif
+    }
+
+    .modal-box p {
+      font-size: 10px;
+      color: #888;
+      margin-bottom: 10px
+    }
+
+    .modal-row {
+      margin-bottom: 8px
+    }
+
+    .modal-row label {
+      font-size: 9px;
+      color: #666;
+      display: block;
+      margin-bottom: 3px
+    }
+
+    .modal-btns {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+      margin-top: 14px
+    }
+
+    /* ===== MISC ===== */
+    .small-label {
+      font-size: 9px;
+      color: #555;
+      margin-bottom: 3px;
+      display: block;
+      letter-spacing: .5px
+    }
+
+    .icon-btn {
+      background: none;
+      border: 1px solid #2a2a38;
+      color: #888;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      border-radius: 2px;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .15s
+    }
+
+    .icon-btn:hover {
+      border-color: #f6a82a;
+      color: #f6a82a
+    }
+
+    .prop-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 4px
+    }
+
+    .prop-row label {
+      font-size: 9px;
+      color: #666;
+      width: 14px;
+      flex-shrink: 0
+    }
+
+    .prop-row input {
+      flex: 1;
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      color: #c0b8a8;
+      padding: 2px 4px;
+      font-size: 9px;
+      font-family: 'Space Mono', monospace;
+      border-radius: 2px
+    }
+
+    #anim-panel {
+      display: none
+    }
+
+    #anim-panel.show {
+      display: block
+    }
+
+    .section-toggle {
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px
+    }
+
+    .section-toggle::after {
+      content: '▾';
+      font-size: 8px;
+      color: #f6a82a
+    }
+
+    /* ===== MARQUEE SELECT ===== */
+    #marquee-box {
+      position: fixed;
+      border: 1px solid #f6a82a;
+      background: #f6a82a15;
+      pointer-events: none;
+      z-index: 50;
+      display: none
+    }
+
+    /* ===== SELECTION OPTIONS PANEL ===== */
+    #sel-options-panel {
+      display: none
+    }
+
+    #sel-options-panel.show {
+      display: block
+    }
+
+    .sel-op-btn {
+      background: #1a1a24;
+      border: 1px solid #2a2a38;
+      color: #c0b8a8;
+      padding: 4px 7px;
+      cursor: pointer;
+      font-family: 'Space Mono', monospace;
+      font-size: 9px;
+      border-radius: 2px;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 3px;
+      transition: all .15s
+    }
+
+    .sel-op-btn:hover {
+      background: #222230;
+      border-color: #f6a82a;
+      color: #f6a82a
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <div class="logo">VOX<span>FORGE</span></div>
+    <div class="sep"></div>
+    <button class="tb-btn active" id="btn-tool-add" onclick="setTool('add')" title="Add Voxel [1]">＋ ADD</button>
+    <button class="tb-btn" id="btn-tool-remove" onclick="setTool('remove')" title="Remove Voxel [2]">✕ REMOVE</button>
+    <button class="tb-btn" id="btn-tool-paint" onclick="setTool('paint')" title="Paint Voxel [3]">✎ PAINT</button>
+    <button class="tb-btn" id="btn-tool-select" onclick="setTool('select')" title="Select [4]">⬚ SELECT</button>
+    <div class="sep"></div>
+    <button class="tb-btn" id="btn-undo" onclick="undo()" title="Undo [Ctrl+Z]">↩ UNDO</button>
+    <button class="tb-btn" id="btn-redo" onclick="redo()" title="Redo [Ctrl+Y]">↪ REDO</button>
+    <div class="sep"></div>
+    <button class="tb-btn" onclick="toggleGrid()" id="btn-grid" title="Toggle Grid [G]">⊞ GRID</button>
+    <button class="tb-btn" onclick="toggleWireframe()" id="btn-wire" title="Toggle Wireframe [W]">⬡ WIRE</button>
+    <button class="tb-btn" onclick="resetCamera()" title="Reset Camera [R]">⌖ RESET</button>
+    <div class="sep"></div>
+    <button class="tb-btn" onclick="openExportModal()" title="Export">⬆ EXPORT</button>
+    <button class="tb-btn" onclick="saveProject()" title="Save [Ctrl+S]">💾 SAVE</button>
+    <button class="tb-btn" onclick="loadProject()" title="Load">📂 LOAD</button>
+    <div class="tb-spacer"></div>
+    <span id="fps-counter">-- FPS</span>
+  </div>
+
+  <!-- LEFT PANEL -->
+  <div id="left-panel">
+    <div class="panel-scroll">
+
+      <!-- TOOLS (duplicate for quick access) -->
+      <div class="panel-section">
+        <div class="panel-title">Tools</div>
+        <div class="tool-grid">
+          <button class="tool-btn active" id="ptool-add" onclick="setTool('add')"><span
+              class="tool-icon">＋</span>Add</button>
+          <button class="tool-btn" id="ptool-remove" onclick="setTool('remove')"><span
+              class="tool-icon">✕</span>Remove</button>
+          <button class="tool-btn" id="ptool-paint" onclick="setTool('paint')"><span
+              class="tool-icon">✎</span>Paint</button>
+          <button class="tool-btn" id="ptool-select" onclick="setTool('select')"><span
+              class="tool-icon">⬚</span>Select</button>
+        </div>
+      </div>
+
+      <!-- SELECTION OPTIONS — visible only in select mode -->
+      <div class="panel-section" id="sel-options-panel">
+        <div class="panel-title">Select Options</div>
+        <button class="sel-op-btn" onclick="selectSameColor()"
+          title="Select all voxels sharing the same color as current selection">🎨 Same Color</button>
+        <button class="sel-op-btn" onclick="selectAdjacent()" title="Expand selection to face-adjacent voxels">⬡
+          Adjacent (expand)</button>
+        <button class="sel-op-btn" onclick="selectConnected()"
+          title="Flood-fill select all voxels connected to current selection">🔗 All Connected</button>
+        <button class="sel-op-btn" onclick="selectSameLayer()" title="Select all voxels on the same Y layer">⬛ Same Y
+          Layer</button>
+        <button class="sel-op-btn" onclick="invertSelection()" title="Invert current selection">⇄ Invert
+          Selection</button>
+        <div style="margin-top:4px;padding-top:4px;border-top:1px solid #1e1e28">
+          <span class="small-label" style="color:#f6a82a88">Box Select: drag on empty space</span>
+          <div style="display:flex;gap:3px;margin-top:3px">
+            <button class="size-btn active" id="box-mode-new" onclick="setBoxMode('new')"
+              style="font-size:8px">New</button>
+            <button class="size-btn" id="box-mode-add" onclick="setBoxMode('add')" style="font-size:8px">Add</button>
+            <button class="size-btn" id="box-mode-sub" onclick="setBoxMode('sub')" style="font-size:8px">Sub</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- COLOR -->
+      <div class="panel-section">
+        <div class="panel-title">Color</div>
+        <div class="color-palette" id="palette"></div>
+        <div class="color-row">
+          <label>Custom</label>
+          <input type="color" id="custom-color" value="#e05050" oninput="setCustomColor(this.value)">
+          <span id="color-hex" style="font-size:9px;color:#888">—</span>
+        </div>
+      </div>
+
+      <!-- VOXEL SIZE -->
+      <div class="panel-section">
+        <div class="panel-title">Voxel Size</div>
+        <div class="size-btns">
+          <button class="size-btn active" data-s="1" onclick="setSize(1)">1</button>
+          <button class="size-btn" data-s="2" onclick="setSize(2)">2</button>
+          <button class="size-btn" data-s="4" onclick="setSize(4)">4</button>
+          <button class="size-btn" data-s="8" onclick="setSize(8)">8</button>
+        </div>
+        <div style="margin-top:6px">
+          <span class="small-label">Custom Size</span>
+          <input type="number" id="custom-size" value="1" min="1" max="32" onchange="setSize(+this.value)"
+            style="width:60px">
+        </div>
+      </div>
+
+      <!-- PAINT OPACITY -->
+      <div class="panel-section">
+        <div class="panel-title">Opacity</div>
+        <input type="range" id="opacity-slider" min="1" max="100" value="100" oninput="setOpacity(+this.value)">
+        <div style="font-size:9px;color:#666;text-align:right" id="opacity-val">100%</div>
+      </div>
+
+      <!-- VIEW OPTIONS -->
+      <div class="panel-section">
+        <div class="panel-title">View</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <button class="tb-btn" onclick="setCamView('top')" style="text-align:left;width:100%">▽ Top</button>
+          <button class="tb-btn" onclick="setCamView('front')" style="text-align:left;width:100%">▷ Front</button>
+          <button class="tb-btn" onclick="setCamView('side')" style="text-align:left;width:100%">▶ Side</button>
+          <button class="tb-btn" onclick="setCamView('iso')" style="text-align:left;width:100%">◈ Isometric</button>
+        </div>
+      </div>
+
+      <!-- KEYBOARD SHORTCUTS -->
+      <div class="panel-section" style="padding-bottom:14px">
+        <div class="panel-title">Shortcuts</div>
+        <div style="font-size:8px;color:#555;line-height:1.8">
+          <div>1/2/3/4 — Tools</div>
+          <div>Ctrl+Z/Y — Undo/Redo</div>
+          <div>Ctrl+A — Select All</div>
+          <div>Del — Delete Selected</div>
+          <div>Space — Play/Pause anim</div>
+          <div>, / . — Prev/Next keyframe</div>
+          <div>G — Grid toggle</div>
+          <div>W — Wireframe</div>
+          <div>R — Reset Camera</div>
+          <div>Esc — Deselect / Stop</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- RIGHT PANEL -->
+  <div id="right-panel">
+    <div class="panel-scroll">
+
+      <!-- GROUPS -->
+      <div class="panel-section">
+        <div class="panel-title">Groups</div>
+        <div id="group-list" style="margin-bottom:6px;min-height:20px"></div>
+        <button class="kf-add-btn" onclick="createGroupFromSelection()" title="Create group from selected voxels">+
+          Group from Selection</button>
+      </div>
+
+      <!-- ANIMATION -->
+      <div class="panel-section" id="anim-section">
+        <div class="panel-title">Animation</div>
+        <div id="anim-no-group" style="font-size:9px;color:#555">Select a group to animate.</div>
+        <div id="anim-panel">
+          <div style="margin-bottom:6px">
+            <span class="small-label">Animation Name</span>
+            <input type="text" id="anim-name" placeholder="Idle, Run, Attack..." style="margin-bottom:4px">
+            <span class="small-label">Duration (s)</span>
+            <input type="number" id="anim-duration" value="2" min="0.1" max="60" step="0.1" onchange="updateDuration()">
+          </div>
+          <div style="margin-bottom:6px">
+            <span class="small-label">Current Time</span>
+            <input type="number" id="anim-time" value="0" min="0" step="0.1" onchange="setPlayheadTime(+this.value)">
+          </div>
+          <div style="margin-bottom:6px">
+            <span class="small-label">Transform at this time</span>
+            <div class="prop-row"><label style="width:50px;color:#e05050">Pos X</label><input type="number" id="kf-px"
+                step="0.1" value="0"></div>
+            <div class="prop-row"><label style="width:50px;color:#50e080">Pos Y</label><input type="number" id="kf-py"
+                step="0.1" value="0"></div>
+            <div class="prop-row"><label style="width:50px;color:#5080e0">Pos Z</label><input type="number" id="kf-pz"
+                step="0.1" value="0"></div>
+            <div class="prop-row"><label style="width:50px;color:#e05050">Rot X°</label><input type="number" id="kf-rx"
+                step="1" value="0"></div>
+            <div class="prop-row"><label style="width:50px;color:#50e080">Rot Y°</label><input type="number" id="kf-ry"
+                step="1" value="0"></div>
+            <div class="prop-row"><label style="width:50px;color:#5080e0">Rot Z°</label><input type="number" id="kf-rz"
+                step="1" value="0"></div>
+            <div class="prop-row"><label style="width:50px;color:#e0c050">Scl X</label><input type="number" id="kf-sx"
+                step="0.01" value="1"></div>
+            <div class="prop-row"><label style="width:50px;color:#e0c050">Scl Y</label><input type="number" id="kf-sy"
+                step="0.01" value="1"></div>
+            <div class="prop-row"><label style="width:50px;color:#e0c050">Scl Z</label><input type="number" id="kf-sz"
+                step="0.01" value="1"></div>
+          </div>
+          <button class="kf-add-btn" onclick="addKeyframe()" title="Add keyframe at current time">+ Add
+            Keyframe</button>
+          <button class="kf-add-btn" onclick="toggleTimeline()" id="btn-tl" style="margin-top:3px">⏱ Timeline</button>
+          <div style="display:flex;gap:4px;margin-top:6px">
+            <button class="tb-btn" onclick="togglePlayPause()" id="btn-play" style="flex:1">▶ Play</button>
+            <button class="tb-btn" onclick="stopAnim()" style="flex:1">■ Stop</button>
+          </div>
+          <div style="display:flex;gap:4px;margin-top:4px">
+            <button class="tb-btn" onclick="exportAnimJSON()" style="flex:1;font-size:8px">↑ Export JSON</button>
+          </div>
+          <!-- Gizmo mode -->
+          <div style="margin-top:8px">
+            <span class="small-label">Gizmo Mode</span>
+            <div class="gizmo-btns" style="display:flex;gap:3px">
+              <button class="size-btn active" id="gizmo-translate" onclick="setGizmoMode('translate')"
+                style="font-size:8px">Move</button>
+              <button class="size-btn" id="gizmo-rotate" onclick="setGizmoMode('rotate')"
+                style="font-size:8px">Rotate</button>
+              <button class="size-btn" id="gizmo-scale" onclick="setGizmoMode('scale')"
+                style="font-size:8px">Scale</button>
+            </div>
+          </div>
+          <!-- Pivot -->
+          <div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e1e28">
+            <span class="small-label">Pivot Point</span>
+            <div style="display:flex;gap:3px;margin-bottom:4px">
+              <button class="size-btn active" id="pivot-center" onclick="setPivotPreset('center')" style="font-size:8px"
+                title="Center of bounding box">Center</button>
+              <button class="size-btn" id="pivot-bottom" onclick="setPivotPreset('bottom')" style="font-size:8px"
+                title="Bottom center">Bottom</button>
+              <button class="size-btn" id="pivot-origin" onclick="setPivotPreset('origin')" style="font-size:8px"
+                title="World origin 0,0,0">Origin</button>
+            </div>
+            <div class="prop-row"><label style="width:14px;color:#e05050">X</label><input type="number" id="piv-x"
+                step="0.1" value="0" onchange="setPivotManual()"></div>
+            <div class="prop-row"><label style="width:14px;color:#50e080">Y</label><input type="number" id="piv-y"
+                step="0.1" value="0" onchange="setPivotManual()"></div>
+            <div class="prop-row"><label style="width:14px;color:#5080e0">Z</label><input type="number" id="piv-z"
+                step="0.1" value="0" onchange="setPivotManual()"></div>
+            <div style="font-size:8px;color:#555;margin-top:2px">Rotation & scale happen around pivot</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SELECTED INFO -->
+      <div class="panel-section">
+        <div class="panel-title">Selection</div>
+        <div style="font-size:9px;color:#666" id="sel-info">Nothing selected.</div>
+        <button class="kf-add-btn" style="margin-top:5px" onclick="deleteSelected()" id="btn-del-sel">✕ Delete
+          Selected</button>
+      </div>
+
+      <!-- SCENE STATS -->
+      <div class="panel-section">
+        <div class="panel-title">Scene</div>
+        <div style="font-size:9px;color:#666;line-height:1.8">
+          <div>Voxels: <b id="stat-voxels" style="color:#f6a82a">0</b></div>
+          <div>Groups: <b id="stat-groups" style="color:#f6a82a">0</b></div>
+          <div>Selected: <b id="stat-selected" style="color:#f6a82a">0</b></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div id="canvas-wrap">
+    <canvas id="render-canvas"></canvas>
+  </div>
+
+  <!-- TIMELINE -->
+  <div id="timeline">
+    <div class="tl-toolbar">
+      <span style="font-size:9px;color:#f6a82a;letter-spacing:1px" id="tl-anim-label">TIMELINE</span>
+      <button class="tb-btn" onclick="stopAnim()" style="padding:2px 8px" title="Rewind to start">⏮</button>
+      <button class="tb-btn" onclick="prevKeyframe()" style="padding:2px 8px" title="Previous keyframe [,]">◂</button>
+      <button class="tb-btn" onclick="togglePlayPause()" id="tl-btn-play" style="padding:2px 8px">▶</button>
+      <button class="tb-btn" onclick="nextKeyframe()" style="padding:2px 8px" title="Next keyframe [.]">▸</button>
+      <span style="font-size:9px;color:#555">Time:</span>
+      <input type="number" id="tl-time-input" value="0" min="0" step="0.01"
+        style="width:55px;font-size:9px;padding:2px 4px;background:#1a1a24;border:1px solid #2a2a38;color:#c0b8a8;border-radius:2px;font-family:'Space Mono',monospace"
+        onchange="setPlayheadTime(+this.value)">
+      <span style="font-size:9px;color:#555">/ <span id="tl-total-time">2.0</span>s</span>
+      <div style="flex:1"></div>
+      <button class="tb-btn" onclick="deleteKeyframeAtTime()" style="padding:2px 8px;font-size:9px"
+        title="Delete keyframe at current time">✕ KF</button>
+      <button class="tb-btn" onclick="toggleTimeline()" style="padding:2px 8px">✕</button>
+    </div>
+    <div class="tl-body">
+      <div class="tl-labels">
+        <div class="tl-lbl" style="height:16px;background:#080810;border-bottom:1px solid #1e1e28"></div>
+        <div class="tl-lbl">Position</div>
+        <div class="tl-lbl">Rotation</div>
+        <div class="tl-lbl">Scale</div>
+      </div>
+      <div class="tl-ruler-col">
+        <div class="tl-ruler" id="tl-ruler" onclick="onRulerClick(event)">
+          <div id="tl-ruler-ticks"></div>
+          <div class="tl-duration-label" id="tl-dur-label">2s</div>
+        </div>
+        <div class="tl-track-area" id="tl-tracks" onclick="onTrackAreaClick(event)">
+          <div class="tl-track" id="tl-track-pos"></div>
+          <div class="tl-track" id="tl-track-rot"></div>
+          <div class="tl-track" id="tl-track-scl"></div>
+          <div class="tl-playhead" id="tl-playhead-el" style="left:0"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div id="status">
+    <b id="st-tool">ADD</b>
+    <span>|</span>
+    <span>Voxels: <b id="st-voxels">0</b></span>
+    <span>|</span>
+    <span>Color: <b id="st-color">—</b></span>
+    <span>|</span>
+    <span>Size: <b id="st-size">1</b></span>
+    <span>|</span>
+    <span id="st-hint">Left click to place voxel</span>
+  </div>
+
+  <!-- GHOST INFO -->
+  <div id="ghost-info"></div>
+
+  <!-- NOTIFICATION -->
+  <div id="notif"></div>
+
+  <!-- MARQUEE SELECT BOX -->
+  <div id="marquee-box"></div>
+
+  <!-- EXPORT MODAL (injected dynamically) -->
+
+  <input type="file" id="file-input" accept=".voxforge,.json" style="display:none" onchange="onFileLoad(event)">
+
+  <script>
+    // ============================================================
+    //  VOXFORGE VOXEL EDITOR — Full Implementation
+    // ============================================================
+
+    const DEG2RAD = Math.PI / 180;
+    const RAD2DEG = 180 / Math.PI;
+
+    // ─── SCENE SETUP ───────────────────────────────────────────
+    const canvasWrap = document.getElementById('canvas-wrap');
+    const canvas = document.getElementById('render-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: false });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.shadowMap.enabled = false;
+    renderer.setClearColor(0x12121a);
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 2000);
+
+    // Lighting
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+    dirLight.position.set(1, 2, 1.5);
+    scene.add(dirLight);
+    const fillLight = new THREE.DirectionalLight(0x8090ff, 0.3);
+    fillLight.position.set(-1, 0.5, -1);
+    scene.add(fillLight);
+
+    // Grid
+    const gridHelper = new THREE.GridHelper(64, 64, 0x2a2a3a, 0x1e1e2a);
+    scene.add(gridHelper);
+
+    // Axes helper
+    const axesHelper = new THREE.AxesHelper(3);
+    axesHelper.position.set(-28, 0.01, -28);
+    scene.add(axesHelper);
+
+    // Ground plane (invisible, for raycasting)
+    const groundGeo = new THREE.PlaneGeometry(512, 512);
+    const groundMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
+    const groundPlane = new THREE.Mesh(groundGeo, groundMat);
+    groundPlane.rotation.x = -Math.PI / 2;
+    groundPlane.name = 'ground';
+    scene.add(groundPlane);
+
+    // Y-locked drag plane (for continuous placement — stays at first-click Y level)
+    const dragPlaneGeo = new THREE.PlaneGeometry(512, 512);
+    const dragPlaneMat = new THREE.MeshBasicMaterial({ visible: false, side: THREE.DoubleSide });
+    const dragPlane = new THREE.Mesh(dragPlaneGeo, dragPlaneMat);
+    dragPlane.rotation.x = -Math.PI / 2;
+    dragPlane.name = 'dragplane';
+    scene.add(dragPlane);
+    let dragLockedY = null; // null = not locked
+
+    // Ghost preview voxel
+    const ghostGeo = new THREE.BoxGeometry(1, 1, 1);
+    const ghostMat = new THREE.MeshLambertMaterial({ color: 0xffffff, transparent: true, opacity: 0.35, wireframe: false });
+    const ghostMesh = new THREE.Mesh(ghostGeo, ghostMat);
+    ghostMesh.visible = false;
+    scene.add(ghostMesh);
+
+    // Ghost outline
+    const ghostEdgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
+    let ghostEdges = null;
+
+    // ─── CAMERA CONTROLS ───────────────────────────────────────
+    let camTarget = new THREE.Vector3(0, 0, 0);
+    let camRadius = 22;
+    let camTheta = Math.PI * 0.35; // horizontal
+    let camPhi = Math.PI * 0.28;   // vertical
+    let isDragging = false;
+    let dragButton = -1;
+    let lastMX = 0, lastMY = 0;
+
+    function updateCamera() {
+      const x = camRadius * Math.sin(camTheta) * Math.cos(camPhi);
+      const y = camRadius * Math.sin(camPhi);
+      const z = camRadius * Math.cos(camTheta) * Math.cos(camPhi);
+      camera.position.set(camTarget.x + x, camTarget.y + y, camTarget.z + z);
+      camera.lookAt(camTarget);
+    }
+
+    function resetCamera() {
+      camTarget.set(0, 0, 0); camRadius = 22; camTheta = Math.PI * 0.35; camPhi = Math.PI * 0.28;
+      updateCamera();
+    }
+
+    function setCamView(v) {
+      if (v === 'top') { camTheta = 0; camPhi = Math.PI * 0.499; }
+      else if (v === 'front') { camTheta = 0; camPhi = 0; }
+      else if (v === 'side') { camTheta = Math.PI * 0.5; camPhi = 0; }
+      else if (v === 'iso') { camTheta = Math.PI * 0.25; camPhi = Math.PI * 0.25; }
+      updateCamera();
+    }
+
+    resetCamera();
+
+    // ─── STATE ────────────────────────────────────────────────
+    let currentTool = 'add';
+    let currentColor = '#e05050';
+    let currentSize = 1;
+    let currentOpacity = 1.0;
+    let wireframeMode = false;
+    let gridVisible = true;
+    let selectedVoxels = new Set(); // Set of keys "x,y,z"
+    let activeGroupId = null;
+    let gizmoMode = 'translate';
+    let isPlaying = false;
+    let playTime = 0;
+    let animDuration = 2;
+    let tlVisible = false;
+
+    // Main voxel store: key "x,y,z" -> { mesh, color, size, opacity }
+    const voxels = new Map();
+
+    // Groups store: id -> { name, voxelKeys: Set, color, group3d: THREE.Group, keyframes: {pos:[],rot:[],scl:[]}, origPositions: Map }
+    const groups = new Map();
+    let groupCounter = 0;
+
+    // Undo/Redo
+    const history = [];
+    let historyIndex = -1;
+
+    // Shared geometries by size
+    const geoCache = new Map();
+    function getGeo(size) {
+      if (!geoCache.has(size)) geoCache.set(size, new THREE.BoxGeometry(size, size, size));
+      return geoCache.get(size);
+    }
+    // Shared materials by color+opacity
+    const matCache = new Map();
+    function getMat(color, opacity) {
+      const key = color + '_' + opacity;
+      if (!matCache.has(key)) {
+        const mat = new THREE.MeshLambertMaterial({ color: new THREE.Color(color) });
+        if (opacity < 1) { mat.transparent = true; mat.opacity = opacity; }
+        matCache.set(key, mat);
+      }
+      return matCache.get(key);
+    }
+
+    // voxel root group in scene
+    const voxelRoot = new THREE.Group();
+    scene.add(voxelRoot);
+
+    // ─── SELECTION OUTLINE SYSTEM ────────────────────────────
+    // Uses backface-scale trick: slightly oversized mesh with FrontSide culled
+    // so only the "shell" behind the original shows as an outline border.
+    const outlineRoot = new THREE.Group();
+    scene.add(outlineRoot);
+
+    const outlineMat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      side: THREE.BackSide,
+      depthTest: true,
+      transparent: false,
+    });
+
+    // key -> THREE.Mesh (outline)
+    const outlineMeshes = new Map();
+
+    const OUTLINE_SCALE = 1.12; // how much bigger the outline shell is
+    const OUTLINE_COLOR = 0xf6a82a; // amber to match UI
+
+    function addOutline(key) {
+      if (outlineMeshes.has(key)) return;
+      const vd = voxels.get(key);
+      if (!vd) return;
+      const s = vd.size;
+      const mat = new THREE.MeshBasicMaterial({ color: OUTLINE_COLOR, side: THREE.BackSide });
+      const mesh = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), mat);
+      mesh.position.copy(vd.mesh.position);
+      // Keep outline parented to the same parent as the voxel mesh so groups animate together
+      vd.mesh.parent.add(mesh);
+      mesh.scale.setScalar(OUTLINE_SCALE);
+      outlineMeshes.set(key, mesh);
+    }
+
+    function removeOutline(key) {
+      const om = outlineMeshes.get(key);
+      if (!om) return;
+      om.parent && om.parent.remove(om);
+      om.geometry.dispose();
+      om.material.dispose();
+      outlineMeshes.delete(key);
+    }
+
+    function clearAllOutlines() {
+      outlineMeshes.forEach((_, k) => removeOutline(k));
+    }
+
+    // ─── PALETTE ──────────────────────────────────────────────
+    const PALETTE = [
+      '#e05050', '#e07830', '#e0c030', '#78c840', '#40b870',
+      '#40c8b8', '#3880e0', '#8050e0', '#e050b8', '#e0e0e0',
+      '#a02828', '#a84810', '#a88818', '#487818', '#186840',
+      '#188888', '#184898', '#501898', '#981870', '#888880',
+      '#602020', '#603808', '#605010', '#284808', '#083820',
+      '#085858', '#082858', '#300858', '#580840', '#404040',
+      '#ff8080', '#ffb080', '#ffe080', '#b0ff80', '#80ffb0',
+      '#80ffff', '#80b0ff', '#b080ff', '#ff80e0', '#ffffff',
+    ];
+
+    function buildPalette() {
+      const el = document.getElementById('palette');
+      PALETTE.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'c-swatch';
+        div.style.background = c;
+        div.onclick = () => setColor(c);
+        el.appendChild(div);
+      });
+      setColor('#e05050');
+    }
+
+    function setColor(c) {
+      currentColor = c;
+      document.getElementById('custom-color').value = c;
+      document.getElementById('color-hex').textContent = c.toUpperCase();
+      document.getElementById('st-color').textContent = c.toUpperCase();
+      document.querySelectorAll('.c-swatch').forEach(s => s.classList.toggle('active', s.style.background === hexToRGB(c) || s.style.background === c));
+      updateGhostColor();
+    }
+
+    function setCustomColor(c) { setColor(c); }
+
+    function hexToRGB(hex) {
+      const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+      return `rgb(${r}, ${g}, ${b})`;
+    }
+
+    function setOpacity(v) {
+      currentOpacity = v / 100;
+      document.getElementById('opacity-val').textContent = v + '%';
+    }
+
+    function setSize(s) {
+      currentSize = Math.max(1, s);
+      document.getElementById('custom-size').value = currentSize;
+      document.getElementById('st-size').textContent = currentSize;
+      document.querySelectorAll('.size-btn').forEach(b => b.classList.toggle('active', +b.dataset.s === currentSize));
+      updateGhostSize();
+    }
+
+    function updateGhostColor() {
+      ghostMat.color.set(currentColor);
+    }
+    function updateGhostSize() {
+      const s = currentSize;
+      ghostGeo.dispose && null; // can't resize easily, just rebuild
+      ghostMesh.scale.set(s, s, s);
+    }
+
+    // ─── VOXEL CREATION / REMOVAL ─────────────────────────────
+    function voxelKey(x, y, z) { return `${x},${y},${z}`; }
+
+    function parseKey(k) { const p = k.split(','); return { x: +p[0], y: +p[1], z: +p[2] }; }
+
+    function snapToGrid(v, size) { return Math.round(v / size) * size; }
+
+    function placeVoxel(x, y, z, color, size, opacity, skipHistory) {
+      const key = voxelKey(x, y, z);
+      if (voxels.has(key)) return null; // already occupied
+
+      const geo = getGeo(size);
+      const mat = getMat(color, opacity).clone(); // clone for individual mesh
+      mat.color.set(color);
+      if (opacity < 1) { mat.transparent = true; mat.opacity = opacity; }
+      const mesh = new THREE.Mesh(geo, mat);
+      mesh.position.set(x + size * 0.5, y + size * 0.5, z + size * 0.5);
+      mesh.userData = { key, x, y, z, color, size, opacity };
+      voxelRoot.add(mesh);
+      voxels.set(key, { mesh, color, size, opacity });
+
+      if (!skipHistory) {
+        if (mouseDown && dragPlacedThisStroke) {
+          // During a drag stroke: buffer for batch commit on mouseup
+          dragPlaceHistory.push({ x, y, z, color, size, opacity });
+        } else {
+          // Single click or first place: push individual command
+          executeCommand({
+            execute() { placeVoxel(x, y, z, color, size, opacity, true); },
+            undo() { removeVoxelAt(x, y, z, true); }
+          });
+        }
+      }
+      updateStats();
+      return mesh;
+    }
+
+    function removeVoxelAt(x, y, z, skipHistory) {
+      const key = voxelKey(x, y, z);
+      if (!voxels.has(key)) return;
+      const { mesh, color, size, opacity } = voxels.get(key);
+      // Remove outline if selected
+      removeOutline(key);
+      // Remove from any group
+      groups.forEach(g => g.voxelKeys.delete(key));
+      voxelRoot.remove(mesh);
+      mesh.geometry.dispose();
+      mesh.material.dispose();
+      voxels.delete(key);
+      selectedVoxels.delete(key);
+      if (!skipHistory) {
+        const sx = x, sy = y, sz = z, sc = color, ss = size, so = opacity;
+        executeCommand({
+          execute() { removeVoxelAt(sx, sy, sz, true); },
+          undo() { placeVoxel(sx, sy, sz, sc, ss, so, true); }
+        });
+      }
+      updateStats();
+    }
+
+    function paintVoxel(x, y, z, color, opacity, skipHistory) {
+      const key = voxelKey(x, y, z);
+      if (!voxels.has(key)) return;
+      const vd = voxels.get(key);
+      const oldColor = vd.color, oldOpacity = vd.opacity;
+      vd.color = color; vd.opacity = opacity;
+      vd.mesh.material.color.set(color);
+      vd.mesh.material.transparent = opacity < 1;
+      vd.mesh.material.opacity = opacity;
+      vd.mesh.userData.color = color;
+      vd.mesh.userData.opacity = opacity;
+      if (!skipHistory) {
+        if (mouseDown && currentMouseButton === 0) {
+          // Accumulate paint strokes into buffer
+          paintStrokeHistory.push({ x, y, z, oldColor, oldOpacity, newColor: color, newOpacity: opacity });
+        } else {
+          const sx = x, sy = y, sz = z, nc = color, no = opacity, oc = oldColor, oo = oldOpacity;
+          executeCommand({
+            execute() { paintVoxel(sx, sy, sz, nc, no, true); },
+            undo() { paintVoxel(sx, sy, sz, oc, oo, true); }
+          });
+        }
+      }
+    }
+
+    // ─── SELECTION ────────────────────────────────────────────
+    function selectVoxel(key, multi) {
+      if (!multi) { selectedVoxels.clear(); clearAllOutlines(); }
+      if (selectedVoxels.has(key)) {
+        selectedVoxels.delete(key);
+        removeOutline(key);
+      } else {
+        selectedVoxels.add(key);
+        addOutline(key);
+      }
+      updateStats();
+      updateSelInfo();
+    }
+
+    function selectAll() {
+      voxels.forEach((v, k) => { if (!selectedVoxels.has(k)) { selectedVoxels.add(k); addOutline(k); } });
+      updateStats(); updateSelInfo();
+    }
+
+    function deselectAll() {
+      selectedVoxels.clear(); clearAllOutlines();
+      updateStats(); updateSelInfo();
+    }
+
+    function resetAllHighlights() {
+      clearAllOutlines();
+    }
+
+    function deleteSelected() {
+      if (selectedVoxels.size === 0) return;
+      const keys = [...selectedVoxels];
+      const saved = keys.map(k => { const vd = voxels.get(k); return vd ? { k, x: vd.mesh.userData.x, y: vd.mesh.userData.y, z: vd.mesh.userData.z, color: vd.color, size: vd.size, opacity: vd.opacity } : null; }).filter(Boolean);
+      keys.forEach(k => { const vd = voxels.get(k); if (vd) removeVoxelAt(vd.mesh.userData.x, vd.mesh.userData.y, vd.mesh.userData.z, true); });
+      selectedVoxels.clear();
+      executeCommand({
+        execute() { saved.forEach(s => removeVoxelAt(s.x, s.y, s.z, true)); },
+        undo() { saved.forEach(s => placeVoxel(s.x, s.y, s.z, s.color, s.size, s.opacity, true)); }
+      });
+      updateStats(); updateSelInfo();
+    }
+
+    function updateSelInfo() {
+      document.getElementById('sel-info').textContent = selectedVoxels.size > 0
+        ? `${selectedVoxels.size} voxel(s) selected` : 'Nothing selected.';
+    }
+
+    // ─── GROUPS ───────────────────────────────────────────────
+    function createGroupFromSelection() {
+      if (selectedVoxels.size === 0) { notify('Select voxels first!'); return; }
+      const id = 'grp_' + (++groupCounter);
+      const name = 'Group ' + groupCounter;
+      const hue = (groupCounter * 137.5) % 360;
+      const groupColor = `hsl(${hue},70%,55%)`;
+
+      // Compute group center
+      let cx = 0, cy = 0, cz = 0;
+      selectedVoxels.forEach(k => { const vd = voxels.get(k); if (vd) { cx += vd.mesh.position.x; cy += vd.mesh.position.y; cz += vd.mesh.position.z; } });
+      cx /= selectedVoxels.size; cy /= selectedVoxels.size; cz /= selectedVoxels.size;
+
+      const group3d = new THREE.Group();
+      group3d.position.set(0, 0, 0);
+      group3d.userData.id = id;
+
+      const origPositions = new Map();
+      selectedVoxels.forEach(k => {
+        const vd = voxels.get(k);
+        if (vd) {
+          origPositions.set(k, vd.mesh.position.clone());
+        }
+      });
+
+      // Move voxels into the Three.js group
+      selectedVoxels.forEach(k => {
+        const vd = voxels.get(k);
+        if (vd) {
+          voxelRoot.remove(vd.mesh);
+          group3d.add(vd.mesh);
+        }
+      });
+      scene.add(group3d);
+
+      const voxelKeys = new Set(selectedVoxels);
+      groups.set(id, { name, voxelKeys, color: groupColor, group3d, keyframes: { pos: [], rot: [], scl: [] }, origPositions, center: new THREE.Vector3(cx, cy, cz), pivot: new THREE.Vector3(cx, cy, cz) });
+      selectedVoxels.clear();
+      resetAllHighlights();
+      activeGroupId = id;
+      setActiveGroup(id);
+      renderGroupList();
+      updateStats();
+      notify(`Group "${name}" created`);
+      // Register undo for group creation
+      executeCommand({
+        execute() { /* group already created */ },
+        undo() {
+          const g = groups.get(id); if (!g) return;
+          g.voxelKeys.forEach(k => { const vd = voxels.get(k); if (vd) { g.group3d.remove(vd.mesh); voxelRoot.add(vd.mesh); } });
+          scene.remove(g.group3d); groups.delete(id);
+          if (activeGroupId === id) { activeGroupId = null; hideAnimPanel(); pivotMarker.visible = false; }
+          renderGroupList(); updateStats();
+        }
+      });
+    }
+
+    function deleteGroup(id) {
+      const g = groups.get(id);
+      if (!g) return;
+      // Move voxels back to voxelRoot
+      g.voxelKeys.forEach(k => {
+        const vd = voxels.get(k);
+        if (vd) { g.group3d.remove(vd.mesh); voxelRoot.add(vd.mesh); }
+      });
+      scene.remove(g.group3d);
+      if (activeGroupId === id) { activeGroupId = null; hideAnimPanel(); }
+      groups.delete(id);
+      renderGroupList();
+      updateStats();
+    }
+
+    function setActiveGroup(id) {
+      activeGroupId = id;
+      document.querySelectorAll('.grp-item').forEach(el => el.classList.toggle('active', el.dataset.id === id));
+      if (id && groups.has(id)) {
+        document.getElementById('anim-no-group').style.display = 'none';
+        document.getElementById('anim-panel').style.display = 'block';
+        const g = groups.get(id);
+        document.getElementById('anim-name').value = g.name;
+        if (!g.pivot) g.pivot = new THREE.Vector3(0, 0, 0);
+        syncPivotUI(g);
+        updateTimelineDisplay();
+        document.getElementById('tl-anim-label').textContent = `TIMELINE — ${g.name.toUpperCase()}`;
+        pivotMarker.visible = true;
+        applyGroupTransform(id, playTime);
+        updateGizmoForGroup(id);
+      } else {
+        hideAnimPanel();
+        pivotMarker.visible = false;
+      }
+    }
+
+    function hideAnimPanel() {
+      document.getElementById('anim-no-group').style.display = '';
+      document.getElementById('anim-panel').style.display = 'none';
+    }
+
+    function renameGroup(id) {
+      const g = groups.get(id);
+      if (!g) return;
+      const n = prompt('Group name:', g.name);
+      if (n && n.trim()) {
+        g.name = n.trim();
+        document.getElementById('anim-name').value = g.name;
+        renderGroupList();
+      }
+    }
+
+    function renderGroupList() {
+      const el = document.getElementById('group-list');
+      el.innerHTML = '';
+      if (groups.size === 0) { el.innerHTML = '<div style="font-size:9px;color:#555;padding:4px 0">No groups yet.</div>'; }
+      groups.forEach((g, id) => {
+        const div = document.createElement('div');
+        div.className = 'grp-item' + (id === activeGroupId ? ' active' : '');
+        div.dataset.id = id;
+        div.innerHTML = `<div class="grp-dot" style="background:${g.color}"></div>
+      <span class="grp-name">${g.name}</span>
+      <span class="grp-count">${g.voxelKeys.size}</span>
+      <div class="grp-actions">
+        <button class="grp-btn" title="Rename" onclick="event.stopPropagation();renameGroup('${id}')">✎</button>
+        <button class="grp-btn" title="Delete group" onclick="event.stopPropagation();deleteGroup('${id}')">✕</button>
+      </div>`;
+        div.onclick = () => setActiveGroup(id);
+        el.appendChild(div);
+      });
+      document.getElementById('stat-groups').textContent = groups.size;
+    }
+
+    // ─── ANIMATION SYSTEM ─────────────────────────────────────
+    function updateDuration() {
+      animDuration = Math.max(0.1, +document.getElementById('anim-duration').value);
+      document.getElementById('tl-total-time').textContent = animDuration.toFixed(1);
+      document.getElementById('tl-dur-label').textContent = animDuration.toFixed(1) + 's';
+      buildRulerTicks();
+      updateTimelineDisplay();
+    }
+
+    function setPlayheadTime(t) {
+      playTime = Math.max(0, Math.min(animDuration, t));
+      document.getElementById('anim-time').value = playTime.toFixed(2);
+      document.getElementById('tl-time-input').value = playTime.toFixed(2);
+      updatePlayheadEl();
+      applyGroupTransform(activeGroupId, playTime);
+      syncKFInputsFromTime();
+    }
+
+    function updatePlayheadEl() {
+      const pct = animDuration > 0 ? playTime / animDuration : 0;
+      const el = document.getElementById('tl-playhead-el');
+      if (el) el.style.left = (pct * 100) + '%';
+    }
+
+    function syncKFInputsFromTime() {
+      if (!activeGroupId) return;
+      const g = groups.get(activeGroupId);
+      if (!g) return;
+      const pt = interpolateGroupTransform(g, playTime);
+      document.getElementById('kf-px').value = pt.pos.x.toFixed(2);
+      document.getElementById('kf-py').value = pt.pos.y.toFixed(2);
+      document.getElementById('kf-pz').value = pt.pos.z.toFixed(2);
+      document.getElementById('kf-rx').value = (pt.rot.x * RAD2DEG).toFixed(1);
+      document.getElementById('kf-ry').value = (pt.rot.y * RAD2DEG).toFixed(1);
+      document.getElementById('kf-rz').value = (pt.rot.z * RAD2DEG).toFixed(1);
+      document.getElementById('kf-sx').value = pt.scl.x.toFixed(3);
+      document.getElementById('kf-sy').value = pt.scl.y.toFixed(3);
+      document.getElementById('kf-sz').value = pt.scl.z.toFixed(3);
+      updateGizmoForGroup(activeGroupId);
+    }
+
+    // addKeyframe defined earlier in animation section
+
+    function interpolateGroupTransform(g, t) {
+      function lerp1D(a, b, f) { return a + (b - a) * f; }
+      function interpTrack(track, prop) {
+        if (!track || track.length === 0) return { x: prop === 'scl' ? 1 : 0, y: prop === 'scl' ? 1 : 0, z: prop === 'scl' ? 1 : 0 };
+        if (track.length === 1) return { x: track[0].x || track[0].x || 0, y: track[0].y || 0, z: track[0].z || 0 };
+        let before = null, after = null;
+        for (let i = 0; i < track.length; i++) {
+          if (track[i].time <= t) before = track[i];
+          if (track[i].time >= t && !after) after = track[i];
+        }
+        if (!before) return { x: after.x || 0, y: after.y || 0, z: after.z || 0 };
+        if (!after || before === after) return { x: before.x || 0, y: before.y || 0, z: before.z || 0 };
+        const f = (t - before.time) / (after.time - before.time);
+        return { x: lerp1D(before.x || 0, after.x || 0, f), y: lerp1D(before.y || 0, after.y || 0, f), z: lerp1D(before.z || 0, after.z || 0, f) };
+      }
+      return {
+        pos: interpTrack(g.keyframes.pos, 'pos'),
+        rot: interpTrack(g.keyframes.rot, 'rot'),
+        scl: interpTrack(g.keyframes.scl, 'scl')
+      };
+    }
+
+    function applyGroupTransform(id, t) {
+      if (!id) return;
+      const g = groups.get(id);
+      if (!g) return;
+      const tr = interpolateGroupTransform(g, t);
+      const piv = g.pivot || new THREE.Vector3(0, 0, 0);
+
+      // Apply rotation and scale around the pivot point:
+      // 1. Reset group rotation/scale
+      // 2. Offset children so pivot is at group origin
+      // 3. Apply rotation/scale on group
+      // 4. Translate group so pivot ends up at tr.pos + piv
+      g.group3d.rotation.set(tr.rot.x, tr.rot.y, tr.rot.z);
+      g.group3d.scale.set(tr.scl.x, tr.scl.y, tr.scl.z);
+
+      // The group's position = translation + pivot - rotated(pivot)
+      // We store voxel positions relative to pivot in g.origLocalPositions (set when pivot changes)
+      // Simpler: set group position such that world-space pivot = tr.pos + piv
+      // group.position = tr.pos + piv - rotation(scale(piv))
+      const euler = new THREE.Euler(tr.rot.x, tr.rot.y, tr.rot.z);
+      const scaledPiv = piv.clone().multiply(new THREE.Vector3(tr.scl.x, tr.scl.y, tr.scl.z));
+      const rotatedScaledPiv = scaledPiv.clone().applyEuler(euler);
+      g.group3d.position.set(
+        tr.pos.x + piv.x - rotatedScaledPiv.x,
+        tr.pos.y + piv.y - rotatedScaledPiv.y,
+        tr.pos.z + piv.z - rotatedScaledPiv.z
+      );
+
+      // Update pivot marker
+      if (id === activeGroupId) {
+        pivotMarker.position.set(tr.pos.x + piv.x, tr.pos.y + piv.y, tr.pos.z + piv.z);
+        pivotMarker.visible = true;
+      }
+    }
+
+    // ─── PIVOT CONTROLS ──────────────────────────────────────
+    function getPivotPresetValue(preset) {
+      if (!activeGroupId) return new THREE.Vector3();
+      const g = groups.get(activeGroupId);
+      if (!g) return new THREE.Vector3();
+
+      // Collect world positions of all voxels in group
+      let minX = Infinity, minY = Infinity, minZ = Infinity;
+      let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+      g.voxelKeys.forEach(k => {
+        const vd = voxels.get(k);
+        if (!vd) return;
+        const wp = vd.mesh.getWorldPosition(new THREE.Vector3());
+        const s = vd.size;
+        minX = Math.min(minX, wp.x - s * 0.5); maxX = Math.max(maxX, wp.x + s * 0.5);
+        minY = Math.min(minY, wp.y - s * 0.5); maxY = Math.max(maxY, wp.y + s * 0.5);
+        minZ = Math.min(minZ, wp.z - s * 0.5); maxZ = Math.max(maxZ, wp.z + s * 0.5);
+      });
+      if (preset === 'center') return new THREE.Vector3((minX + maxX) / 2, (minY + maxY) / 2, (minZ + maxZ) / 2);
+      if (preset === 'bottom') return new THREE.Vector3((minX + maxX) / 2, minY, (minZ + maxZ) / 2);
+      if (preset === 'origin') return new THREE.Vector3(0, 0, 0);
+      return new THREE.Vector3();
+    }
+
+    function setPivotPreset(preset) {
+      if (!activeGroupId) return;
+      const g = groups.get(activeGroupId);
+      if (!g) return;
+      const p = getPivotPresetValue(preset);
+      g.pivot = p.clone();
+      document.getElementById('piv-x').value = p.x.toFixed(2);
+      document.getElementById('piv-y').value = p.y.toFixed(2);
+      document.getElementById('piv-z').value = p.z.toFixed(2);
+      ['center', 'bottom', 'origin'].forEach(s => document.getElementById('pivot-' + s).classList.toggle('active', s === preset));
+      applyGroupTransform(activeGroupId, playTime);
+      updateGizmoForGroup(activeGroupId);
+    }
+
+    function setPivotManual() {
+      if (!activeGroupId) return;
+      const g = groups.get(activeGroupId);
+      if (!g) return;
+      g.pivot = new THREE.Vector3(
+        +document.getElementById('piv-x').value,
+        +document.getElementById('piv-y').value,
+        +document.getElementById('piv-z').value
+      );
+      ['center', 'bottom', 'origin'].forEach(s => document.getElementById('pivot-' + s).classList.remove('active'));
+      applyGroupTransform(activeGroupId, playTime);
+      updateGizmoForGroup(activeGroupId);
+    }
+
+    function syncPivotUI(g) {
+      const piv = g.pivot || new THREE.Vector3();
+      document.getElementById('piv-x').value = piv.x.toFixed(2);
+      document.getElementById('piv-y').value = piv.y.toFixed(2);
+      document.getElementById('piv-z').value = piv.z.toFixed(2);
+    }
+
+    function setPlayButtonState(playing) {
+      document.getElementById('btn-play').textContent = playing ? '⏸ Pause' : '▶ Play';
+      document.getElementById('tl-btn-play').textContent = playing ? '⏸' : '▶';
+    }
+
+    function togglePlayPause() {
+      if (isPlaying) { pauseAnim(); } else { playAnim(); }
+    }
+
+    function playAnim() {
+      if (!activeGroupId) { notify('Select a group first'); return; }
+      isPlaying = true;
+      setPlayButtonState(true);
+    }
+
+    function pauseAnim() {
+      isPlaying = false;
+      setPlayButtonState(false);
+    }
+
+    function getAllKeyframeTimes() {
+      if (!activeGroupId) return [];
+      const g = groups.get(activeGroupId);
+      if (!g) return [];
+      const times = new Set();
+      ['pos', 'rot', 'scl'].forEach(prop => { (g.keyframes[prop] || []).forEach(k => times.add(k.time)); });
+      return [...times].sort((a, b) => a - b);
+    }
+
+    function prevKeyframe() {
+      const times = getAllKeyframeTimes();
+      const prev = times.filter(t => t < playTime - 0.001);
+      if (prev.length > 0) setPlayheadTime(prev[prev.length - 1]);
+      else if (times.length > 0) setPlayheadTime(times[times.length - 1]); // wrap to last
+    }
+
+    function nextKeyframe() {
+      const times = getAllKeyframeTimes();
+      const next = times.filter(t => t > playTime + 0.001);
+      if (next.length > 0) setPlayheadTime(next[0]);
+      else if (times.length > 0) setPlayheadTime(times[0]); // wrap to first
+    }
+
+    function deleteKeyframeAtTime() {
+      if (!activeGroupId) return;
+      const g = groups.get(activeGroupId);
+      if (!g) return;
+      const t = playTime;
+      const snap = 0.02;
+      let deleted = false;
+      const beforeKFs = JSON.parse(JSON.stringify(g.keyframes));
+      ['pos', 'rot', 'scl'].forEach(prop => {
+        const before = g.keyframes[prop].length;
+        g.keyframes[prop] = g.keyframes[prop].filter(k => Math.abs(k.time - t) > snap);
+        if (g.keyframes[prop].length < before) deleted = true;
+      });
+      if (deleted) {
+        updateTimelineDisplay();
+        notify(`Keyframe at ${t.toFixed(2)}s deleted`);
+        const afterKFs = JSON.parse(JSON.stringify(g.keyframes));
+        executeCommand({
+          execute() { const grp = groups.get(activeGroupId); if (grp) { grp.keyframes = JSON.parse(JSON.stringify(afterKFs)); updateTimelineDisplay(); } },
+          undo() { const grp = groups.get(activeGroupId); if (grp) { grp.keyframes = JSON.parse(JSON.stringify(beforeKFs)); updateTimelineDisplay(); } }
+        });
+      } else {
+        notify('No keyframe near current time');
+      }
+    }
+
+    // Make addKeyframe undo-able
+    const _addKeyframeOrig = addKeyframe;
+    // Override addKeyframe to record undo
+    function addKeyframe() {
+      if (!activeGroupId) return;
+      const g = groups.get(activeGroupId);
+      if (!g) return;
+      const beforeKFs = JSON.parse(JSON.stringify(g.keyframes));
+      const t = playTime;
+      const kfPos = { x: +document.getElementById('kf-px').value, y: +document.getElementById('kf-py').value, z: +document.getElementById('kf-pz').value };
+      const kfRot = { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD };
+      const kfScl = { x: +document.getElementById('kf-sx').value, y: +document.getElementById('kf-sy').value, z: +document.getElementById('kf-sz').value };
+      ['pos', 'rot', 'scl'].forEach(prop => {
+        g.keyframes[prop] = g.keyframes[prop].filter(k => Math.abs(k.time - t) > 0.001);
+        const vals = prop === 'pos' ? kfPos : prop === 'rot' ? kfRot : kfScl;
+        g.keyframes[prop].push({ time: t, ...vals });
+        g.keyframes[prop].sort((a, b) => a.time - b.time);
+      });
+      applyGroupTransform(activeGroupId, t);
+      updateTimelineDisplay();
+      notify(`Keyframe added at ${t.toFixed(2)}s`);
+      const afterKFs = JSON.parse(JSON.stringify(g.keyframes));
+      executeCommand({
+        execute() { const grp = groups.get(activeGroupId); if (grp) { grp.keyframes = JSON.parse(JSON.stringify(afterKFs)); updateTimelineDisplay(); } },
+        undo() { const grp = groups.get(activeGroupId); if (grp) { grp.keyframes = JSON.parse(JSON.stringify(beforeKFs)); updateTimelineDisplay(); } }
+      });
+    }
+
+    function playAnim() {
+      if (!activeGroupId) { notify('Select a group first'); return; }
+      isPlaying = true;
+      document.getElementById('btn-play').textContent = '⏸ PAUSE';
+      document.getElementById('tl-btn-play').textContent = '⏸';
+    }
+
+    function stopAnim() {
+      isPlaying = false;
+      playTime = 0;
+      setPlayButtonState(false);
+      setPlayheadTime(0);
+    }
+
+    // ─── TIMELINE UI ──────────────────────────────────────────
+    function toggleTimeline() {
+      tlVisible = !tlVisible;
+      document.getElementById('timeline').classList.toggle('show', tlVisible);
+      document.getElementById('canvas-wrap').classList.toggle('tl-open', tlVisible);
+      if (tlVisible) { buildRulerTicks(); updateTimelineDisplay(); }
+      resize();
+    }
+
+    function buildRulerTicks() {
+      const el = document.getElementById('tl-ruler-ticks');
+      el.innerHTML = '';
+      const steps = Math.ceil(animDuration / 0.5);
+      for (let i = 0; i <= steps; i++) {
+        const t = i * 0.5;
+        const pct = t / animDuration * 100;
+        const tick = document.createElement('div');
+        tick.className = 'ruler-tick';
+        tick.style.left = pct + '%';
+        tick.textContent = t.toFixed(1) + 's';
+        el.appendChild(tick);
+      }
+    }
+
+    function updateTimelineDisplay() {
+      clearTimelineKFs();
+      if (!activeGroupId) return;
+      const g = groups.get(activeGroupId);
+      if (!g) return;
+      const trackEls = { pos: document.getElementById('tl-track-pos'), rot: document.getElementById('tl-track-rot'), scl: document.getElementById('tl-track-scl') };
+      const propLabels = { pos: 'Position', rot: 'Rotation', scl: 'Scale' };
+      ['pos', 'rot', 'scl'].forEach(prop => {
+        const track = g.keyframes[prop] || [];
+        track.forEach(kf => {
+          const pct = kf.time / animDuration * 100;
+          const isActive = Math.abs(kf.time - playTime) < 0.015;
+          const div = document.createElement('div');
+          div.className = 'tl-kf' + (isActive ? ' selected' : '');
+          div.style.left = pct + '%';
+          const vals = `x:${(kf.x || 0).toFixed(2)} y:${(kf.y || 0).toFixed(2)} z:${(kf.z || 0).toFixed(2)}`;
+          div.title = `[${propLabels[prop]}] t=${kf.time.toFixed(2)}s\n${vals}`;
+          div.onclick = e => { e.stopPropagation(); setPlayheadTime(kf.time); };
+          div.ondblclick = e => { e.stopPropagation(); deleteKeyframeAtTime(); };
+          trackEls[prop].appendChild(div);
+        });
+      });
+      updatePlayheadEl();
+    }
+
+    function clearTimelineKFs() {
+      ['tl-track-pos', 'tl-track-rot', 'tl-track-scl'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.querySelectorAll('.tl-kf').forEach(k => k.remove());
+      });
+    }
+
+    function onRulerClick(e) {
+      const rect = document.getElementById('tl-ruler').getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      setPlayheadTime(pct * animDuration);
+    }
+
+    function onTrackAreaClick(e) {
+      const rect = document.getElementById('tl-tracks').getBoundingClientRect();
+      const pct = (e.clientX - rect.left) / rect.width;
+      setPlayheadTime(pct * animDuration);
+    }
+
+    function exportAnimJSON() {
+      if (!activeGroupId) return;
+      const g = groups.get(activeGroupId);
+      const data = {
+        name: g.name,
+        duration: animDuration,
+        tracks: {
+          position: g.keyframes.pos.map(k => ({ time: k.time, x: k.x || 0, y: k.y || 0, z: k.z || 0 })),
+          rotation: g.keyframes.rot.map(k => ({ time: k.time, x: k.x || 0, y: k.y || 0, z: k.z || 0 })),
+          scale: g.keyframes.scl.map(k => ({ time: k.time, x: k.x || 1, y: k.y || 1, z: k.z || 1 }))
+        }
+      };
+      downloadJSON(data, (g.name || 'animation') + '.json');
+      notify('Animation JSON exported');
+    }
+
+    // ─── GIZMO (Transform Handles) ────────────────────────────
+    const gizmoGroup = new THREE.Group();
+    gizmoGroup.visible = false;
+    scene.add(gizmoGroup);
+
+    // Pivot marker — small sphere visible when a group is active
+    const pivotMarkerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, depthTest: false });
+    const pivotMarker = new THREE.Mesh(new THREE.SphereGeometry(0.18, 8, 8), pivotMarkerMat);
+    pivotMarker.renderOrder = 999;
+    pivotMarker.visible = false;
+    scene.add(pivotMarker);
+
+    // Translate arrows
+    function buildGizmo() {
+      gizmoGroup.clear();
+      const arrowLen = 2.5, arrowHead = 0.3, arrowR = 0.04;
+      const axisColors = [0xff4040, 0x40ff70, 0x4080ff];
+      const axes = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
+      if (gizmoMode === 'translate') {
+        axes.forEach((axis, i) => {
+          const shaftGeo = new THREE.CylinderGeometry(arrowR, arrowR, arrowLen, 8);
+          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i] });
+          const shaft = new THREE.Mesh(shaftGeo, mat);
+          const headGeo = new THREE.ConeGeometry(arrowHead, arrowHead * 2, 8);
+          const head = new THREE.Mesh(headGeo, mat.clone());
+          const group = new THREE.Group();
+          shaft.position.set(0, arrowLen / 2, 0);
+          head.position.set(0, arrowLen + arrowHead, 0);
+          group.add(shaft); group.add(head);
+          if (i === 0) group.rotation.z = -Math.PI / 2;
+          else if (i === 2) group.rotation.x = Math.PI / 2;
+          group.userData.axis = ['x', 'y', 'z'][i];
+          group.userData.gizmoType = 'translate';
+          gizmoGroup.add(group);
+        });
+      } else if (gizmoMode === 'rotate') {
+        axes.forEach((axis, i) => {
+          const geo = new THREE.TorusGeometry(1.8, 0.06, 8, 32);
+          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i] });
+          const ring = new THREE.Mesh(geo, mat);
+          // Torus defaults to XY plane. Rotate each ring to be perpendicular to its axis:
+          // X ring → lies in YZ plane → rotate Y by PI/2
+          // Y ring → lies in XZ plane → rotate X by PI/2
+          // Z ring → lies in XY plane → no rotation needed
+          if (i === 0) ring.rotation.y = Math.PI / 2;
+          else if (i === 1) ring.rotation.x = Math.PI / 2;
+          // i === 2: no rotation, stays in XY plane
+          ring.userData.axis = ['x', 'y', 'z'][i];
+          ring.userData.gizmoType = 'rotate';
+          gizmoGroup.add(ring);
+        });
+      } else if (gizmoMode === 'scale') {
+        axes.forEach((axis, i) => {
+          const shaftGeo = new THREE.CylinderGeometry(arrowR, arrowR, arrowLen, 8);
+          const mat = new THREE.MeshBasicMaterial({ color: axisColors[i] });
+          const shaft = new THREE.Mesh(shaftGeo, mat);
+          const cubeGeo = new THREE.BoxGeometry(arrowHead * 2, arrowHead * 2, arrowHead * 2);
+          const cube = new THREE.Mesh(cubeGeo, mat.clone());
+          const group = new THREE.Group();
+          shaft.position.set(0, arrowLen / 2, 0);
+          cube.position.set(0, arrowLen + arrowHead, 0);
+          group.add(shaft); group.add(cube);
+          if (i === 0) group.rotation.z = -Math.PI / 2;
+          else if (i === 2) group.rotation.x = Math.PI / 2;
+          group.userData.axis = ['x', 'y', 'z'][i];
+          group.userData.gizmoType = 'scale';
+          gizmoGroup.add(group);
+        });
+      }
+    }
+
+    function setGizmoMode(mode) {
+      gizmoMode = mode;
+      document.querySelectorAll('.gizmo-btns .size-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById('gizmo-' + mode).classList.add('active');
+      buildGizmo();
+      updateGizmoForGroup(activeGroupId);
+    }
+
+    function updateGizmoForGroup(id) {
+      if (!id || !groups.has(id)) { gizmoGroup.visible = false; return; }
+      const g = groups.get(id);
+      gizmoGroup.position.copy(g.group3d.position);
+      gizmoGroup.visible = true;
+    }
+
+    // Gizmo dragging state
+    let gizmoDragging = false;
+    let gizmoDragAxis = null;
+    let gizmoDragStartMouse = new THREE.Vector2();
+    let gizmoDragStartValue = null;
+
+    // ─── COMMAND PATTERN ──────────────────────────────────────
+    function executeCommand(cmd) {
+      history.splice(historyIndex + 1);
+      history.push(cmd);
+      if (history.length > 100) history.shift();
+      historyIndex = history.length - 1;
+      document.getElementById('btn-undo').disabled = historyIndex < 0;
+      document.getElementById('btn-redo').disabled = true;
+    }
+
+    function undo() {
+      if (historyIndex < 0) return;
+      history[historyIndex].undo();
+      historyIndex--;
+      document.getElementById('btn-undo').disabled = historyIndex < 0;
+      document.getElementById('btn-redo').disabled = historyIndex >= history.length - 1;
+      updateStats();
+    }
+
+    function redo() {
+      if (historyIndex >= history.length - 1) return;
+      historyIndex++;
+      history[historyIndex].execute();
+      document.getElementById('btn-undo').disabled = historyIndex < 0;
+      document.getElementById('btn-redo').disabled = historyIndex >= history.length - 1;
+      updateStats();
+    }
+
+    // ─── ADVANCED SELECTION HELPERS ───────────────────────────
+    let boxSelectMode = 'new'; // 'new' | 'add' | 'sub'
+
+    function setBoxMode(mode) {
+      boxSelectMode = mode;
+      ['new', 'add', 'sub'].forEach(m => document.getElementById('box-mode-' + m).classList.toggle('active', m === mode));
+    }
+
+    function selectSameColor() {
+      if (selectedVoxels.size === 0) { notify('Select a voxel first'); return; }
+      const colors = new Set();
+      selectedVoxels.forEach(k => { const vd = voxels.get(k); if (vd) colors.add(vd.color); });
+      voxels.forEach((vd, k) => {
+        if (colors.has(vd.color) && !selectedVoxels.has(k)) { selectedVoxels.add(k); addOutline(k); }
+      });
+      notify(`Selected ${selectedVoxels.size} voxels (same color)`);
+      updateStats(); updateSelInfo();
+    }
+
+    function selectAdjacent() {
+      if (selectedVoxels.size === 0) { notify('Select a voxel first'); return; }
+      const toAdd = new Set();
+      const dirs = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+      selectedVoxels.forEach(k => {
+        const { x, y, z } = parseKey(k);
+        const vd = voxels.get(k); if (!vd) return;
+        const s = vd.size;
+        dirs.forEach(([dx, dy, dz]) => {
+          const nk = voxelKey(x + dx * s, y + dy * s, z + dz * s);
+          if (voxels.has(nk) && !selectedVoxels.has(nk)) toAdd.add(nk);
+        });
+      });
+      toAdd.forEach(k => { selectedVoxels.add(k); addOutline(k); });
+      notify(`Expanded to ${selectedVoxels.size} voxels`);
+      updateStats(); updateSelInfo();
+    }
+
+    function selectConnected() {
+      if (selectedVoxels.size === 0) { notify('Select a voxel first'); return; }
+      // BFS flood fill from all currently selected
+      const dirs = [[1, 0, 0], [-1, 0, 0], [0, 1, 0], [0, -1, 0], [0, 0, 1], [0, 0, -1]];
+      const queue = [...selectedVoxels];
+      const visited = new Set(selectedVoxels);
+      while (queue.length > 0) {
+        const k = queue.shift();
+        const { x, y, z } = parseKey(k);
+        const vd = voxels.get(k); if (!vd) continue;
+        const s = vd.size;
+        dirs.forEach(([dx, dy, dz]) => {
+          const nk = voxelKey(x + dx * s, y + dy * s, z + dz * s);
+          if (voxels.has(nk) && !visited.has(nk)) {
+            visited.add(nk); queue.push(nk); selectedVoxels.add(nk);
+            addOutline(nk);
+          }
+        });
+      }
+      notify(`Connected: ${selectedVoxels.size} voxels selected`);
+      updateStats(); updateSelInfo();
+    }
+
+    function selectSameLayer() {
+      if (selectedVoxels.size === 0) { notify('Select a voxel first'); return; }
+      const layers = new Set();
+      selectedVoxels.forEach(k => layers.add(parseKey(k).y));
+      voxels.forEach((vd, k) => {
+        if (layers.has(parseKey(k).y) && !selectedVoxels.has(k)) { selectedVoxels.add(k); addOutline(k); }
+      });
+      notify(`Selected ${selectedVoxels.size} voxels on Y=${[...layers].join(',')}`);
+      updateStats(); updateSelInfo();
+    }
+
+    function invertSelection() {
+      const all = new Set(voxels.keys());
+      clearAllOutlines();
+      const newSel = new Set();
+      all.forEach(k => { if (!selectedVoxels.has(k)) { newSel.add(k); addOutline(k); } });
+      selectedVoxels.clear();
+      newSel.forEach(k => selectedVoxels.add(k));
+      notify(`Inverted: ${selectedVoxels.size} selected`);
+      updateStats(); updateSelInfo();
+    }
+
+    // ─── BOX SELECT ───────────────────────────────────────────
+    let isBoxSelecting = false;
+    let boxSelectStart = null;
+    const boxSelectEl = document.getElementById('marquee-box');
+
+    function startBoxSelect(e) {
+      isBoxSelecting = true;
+      boxSelectStart = { x: e.clientX, y: e.clientY };
+      boxSelectEl.style.display = 'block';
+      boxSelectEl.style.left = e.clientX + 'px';
+      boxSelectEl.style.top = e.clientY + 'px';
+      boxSelectEl.style.width = '0px';
+      boxSelectEl.style.height = '0px';
+    }
+
+    function updateBoxSelect(e) {
+      if (!isBoxSelecting || !boxSelectStart) return;
+      const x1 = Math.min(boxSelectStart.x, e.clientX);
+      const y1 = Math.min(boxSelectStart.y, e.clientY);
+      const x2 = Math.max(boxSelectStart.x, e.clientX);
+      const y2 = Math.max(boxSelectStart.y, e.clientY);
+      boxSelectEl.style.left = x1 + 'px';
+      boxSelectEl.style.top = y1 + 'px';
+      boxSelectEl.style.width = (x2 - x1) + 'px';
+      boxSelectEl.style.height = (y2 - y1) + 'px';
+    }
+
+    function finishBoxSelect(e) {
+      if (!boxSelectStart) return;
+      const rect = canvas.getBoundingClientRect();
+      const x1 = Math.min(boxSelectStart.x, e.clientX);
+      const y1 = Math.min(boxSelectStart.y, e.clientY);
+      const x2 = Math.max(boxSelectStart.x, e.clientX);
+      const y2 = Math.max(boxSelectStart.y, e.clientY);
+      const w = x2 - x1, h = y2 - y1;
+      if (w < 4 && h < 4) return; // too small, treat as click
+
+      if (boxSelectMode === 'new') { deselectAll(); }
+
+      // Project each voxel center to screen and check if it's inside the box
+      const allVoxelMeshes = [];
+      voxels.forEach((vd, k) => allVoxelMeshes.push({ k, pos: vd.mesh.getWorldPosition(new THREE.Vector3()) }));
+
+      allVoxelMeshes.forEach(({ k, pos }) => {
+        const projected = pos.clone().project(camera);
+        const sx = (projected.x * 0.5 + 0.5) * rect.width + rect.left;
+        const sy = (-projected.y * 0.5 + 0.5) * rect.height + rect.top;
+        if (sx >= x1 && sx <= x2 && sy >= y1 && sy <= y2 && projected.z < 1) {
+          if (boxSelectMode === 'sub') {
+            selectedVoxels.delete(k);
+            removeOutline(k);
+          } else {
+            if (!selectedVoxels.has(k)) { selectedVoxels.add(k); addOutline(k); }
+          }
+        }
+      });
+
+      boxSelectEl.style.display = 'none';
+      isBoxSelecting = false;
+      notify(`Box selected: ${selectedVoxels.size} voxels`);
+      updateStats(); updateSelInfo();
+    }
+
+    // ─── RAYCASTING ───────────────────────────────────────────
+    const raycaster = new THREE.Raycaster();
+    const mouse2D = new THREE.Vector2();
+
+    function getIntersects(e) {
+      const rect = canvas.getBoundingClientRect();
+      mouse2D.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+      mouse2D.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+      raycaster.setFromCamera(mouse2D, camera);
+
+      // Check gizmo first
+      const gizmoObjects = [];
+      gizmoGroup.traverse(obj => { if (obj.isMesh) gizmoObjects.push(obj); });
+      const gizmoHits = raycaster.intersectObjects(gizmoObjects, false);
+      if (gizmoHits.length > 0) return { type: 'gizmo', hit: gizmoHits[0] };
+
+      // Check voxels
+      const allMeshes = [];
+      voxels.forEach(v => allMeshes.push(v.mesh));
+      groups.forEach(g => g.voxelKeys.forEach(k => { const vd = voxels.get(k); if (vd) allMeshes.push(vd.mesh); }));
+
+      // Deduplicate
+      const uniqueMeshes = [...new Set(allMeshes)];
+      const voxelHits = raycaster.intersectObjects(uniqueMeshes, false);
+      if (voxelHits.length > 0) return { type: 'voxel', hit: voxelHits[0] };
+
+      // Check ground
+      const groundHits = raycaster.intersectObject(groundPlane);
+      if (groundHits.length > 0) return { type: 'ground', hit: groundHits[0] };
+
+      return null;
+    }
+
+    function getPlacePosition(intersect) {
+      // Position adjacent to face
+      const faceNormal = intersect.face.normal.clone().transformDirection(intersect.object.matrixWorld).normalize();
+      const point = intersect.point.clone().addScaledVector(faceNormal, currentSize * 0.5 + 0.001);
+      const s = currentSize;
+      const x = snapToGrid(point.x - s * 0.5, s);
+      const y = Math.max(0, snapToGrid(point.y - s * 0.5, s));
+      const z = snapToGrid(point.z - s * 0.5, s);
+      return { x, y, z };
+    }
+
+    function getGroundPlacePosition(intersect) {
+      const p = intersect.point;
+      const s = currentSize;
+      return { x: snapToGrid(p.x - s * 0.5, s), y: 0, z: snapToGrid(p.z - s * 0.5, s) };
+    }
+
+    // ─── MOUSE EVENTS ─────────────────────────────────────────
+    let mouseDown = false;
+    let currentMouseButton = -1;
+    let isOrbiting = false, isPanning = false;
+    let lastPaintKey = null;
+    let dragPlacedThisStroke = false;
+    // Stroke buffers: accumulate drag actions then commit as one undo step on mouseup
+    const dragPlaceHistory = [];   // {x,y,z,color,size,opacity}
+    const paintStrokeHistory = []; // {x,y,z,oldColor,oldOpacity,newColor,newOpacity}
+
+    canvas.addEventListener('contextmenu', e => e.preventDefault());
+
+    canvas.addEventListener('mousedown', e => {
+      e.preventDefault();
+      mouseDown = true;
+      currentMouseButton = e.button;
+      lastMX = e.clientX; lastMY = e.clientY;
+      lastPaintKey = null;
+
+      if (e.button === 1) { isOrbiting = true; canvas.style.cursor = 'grabbing'; return; }
+      if (e.button === 2) { isPanning = true; canvas.style.cursor = 'move'; return; }
+
+      if (e.button === 0) {
+        dragLockedY = null;
+        dragPlacedThisStroke = false;
+        dragPlaceHistory.length = 0;
+        paintStrokeHistory.length = 0;
+        const hit = getIntersects(e);
+
+        if (hit && hit.type === 'gizmo') {
+          // Start gizmo drag
+          let obj = hit.hit.object;
+          while (obj && !obj.userData.gizmoType) obj = obj.parent;
+          if (obj && obj.userData.axis) {
+            gizmoDragging = true;
+            gizmoDragAxis = obj.userData.axis;
+            gizmoDragStartMouse.set(e.clientX, e.clientY);
+            if (activeGroupId) {
+              const g = groups.get(activeGroupId);
+              const cur = interpolateGroupTransform(g, playTime);
+              gizmoDragStartValue = {
+                pos: { ...cur.pos },
+                rot: { ...cur.rot },
+                scl: { ...cur.scl }
+              };
+            }
+          }
+          return;
+        }
+
+        if (currentTool === 'add') {
+          if (!hit) return;
+          if (hit.type === 'voxel') {
+            const pos = getPlacePosition(hit.hit);
+            placeVoxel(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
+            dragLockedY = pos.y;
+            dragPlane.position.y = dragLockedY + currentSize * 0.5 + 0.001;
+            dragPlacedThisStroke = true;
+          } else if (hit.type === 'ground') {
+            const pos = getGroundPlacePosition(hit.hit);
+            placeVoxel(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
+            dragLockedY = pos.y;
+            dragPlane.position.y = dragLockedY + currentSize * 0.5 + 0.001;
+            dragPlacedThisStroke = true;
+          }
+        } else if (currentTool === 'remove') {
+          if (!hit) return;
+          if (hit.type === 'voxel') {
+            const ud = hit.hit.object.userData;
+            removeVoxelAt(ud.x, ud.y, ud.z);
+          }
+        } else if (currentTool === 'paint') {
+          if (!hit) return;
+          if (hit.type === 'voxel') {
+            const ud = hit.hit.object.userData;
+            const key = voxelKey(ud.x, ud.y, ud.z);
+            if (key !== lastPaintKey) { paintVoxel(ud.x, ud.y, ud.z, currentColor, currentOpacity); lastPaintKey = key; }
+          }
+        } else if (currentTool === 'select') {
+          if (hit && hit.type === 'voxel') {
+            const ud = hit.hit.object.userData;
+            const key = voxelKey(ud.x, ud.y, ud.z);
+            selectVoxel(key, e.shiftKey || e.ctrlKey);
+          } else {
+            // Start box select on empty space
+            if (!e.shiftKey && !e.ctrlKey) deselectAll();
+            startBoxSelect(e);
+          }
+        }
+      }
+    });
+
+    canvas.addEventListener('mousemove', e => {
+      const dx = e.clientX - lastMX;
+      const dy = e.clientY - lastMY;
+      lastMX = e.clientX; lastMY = e.clientY;
+
+      if (isOrbiting) {
+        camTheta -= dx * 0.008;
+        camPhi = Math.max(-Math.PI * 0.49, Math.min(Math.PI * 0.49, camPhi + dy * 0.008));
+        updateCamera(); return;
+      }
+      if (isPanning) {
+        const right = new THREE.Vector3();
+        const up = new THREE.Vector3();
+        camera.getWorldDirection(up);
+        right.crossVectors(up, camera.up).normalize();
+        up.crossVectors(right, new THREE.Vector3(0, 1, 0)).normalize();
+        const panSpeed = camRadius * 0.001;
+        camTarget.addScaledVector(right, -dx * panSpeed);
+        camTarget.addScaledVector(up, dy * panSpeed);
+        updateCamera(); return;
+      }
+
+      if (gizmoDragging && activeGroupId) {
+        handleGizmoDrag(e, dx, dy);
+        return;
+      }
+
+      // Box select drag
+      if (isBoxSelecting && currentTool === 'select') {
+        updateBoxSelect(e);
+        return;
+      }
+
+      // Ghost preview
+      if (currentTool === 'add') {
+        const hit = getIntersects(e);
+        if (hit && (hit.type === 'voxel' || hit.type === 'ground')) {
+          const pos = hit.type === 'voxel' ? getPlacePosition(hit.hit) : getGroundPlacePosition(hit.hit);
+          const s = currentSize;
+          ghostMesh.scale.set(s, s, s);
+          ghostMesh.position.set(pos.x + s * 0.5, pos.y + s * 0.5, pos.z + s * 0.5);
+          ghostMat.color.set(currentColor);
+          ghostMesh.visible = true;
+        } else {
+          ghostMesh.visible = false;
+        }
+      } else {
+        ghostMesh.visible = false;
+      }
+
+      // Paint on drag
+      if (mouseDown && currentMouseButton === 0 && currentTool === 'paint') {
+        const hit = getIntersects(e);
+        if (hit && hit.type === 'voxel') {
+          const ud = hit.hit.object.userData;
+          const key = voxelKey(ud.x, ud.y, ud.z);
+          if (key !== lastPaintKey) { paintVoxel(ud.x, ud.y, ud.z, currentColor, currentOpacity); lastPaintKey = key; }
+        }
+      }
+      // Add on drag
+      if (mouseDown && currentMouseButton === 0 && currentTool === 'add') {
+        if (dragLockedY !== null && dragPlacedThisStroke) {
+          // Cast against the Y-locked horizontal plane to prevent stacking
+          const rect = canvas.getBoundingClientRect();
+          mouse2D.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          mouse2D.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(mouse2D, camera);
+          const planeHits = raycaster.intersectObject(dragPlane);
+          if (planeHits.length > 0) {
+            const p = planeHits[0].point;
+            const s = currentSize;
+            const x = snapToGrid(p.x - s * 0.5, s);
+            const z = snapToGrid(p.z - s * 0.5, s);
+            placeVoxel(x, dragLockedY, z, currentColor, s, currentOpacity);
+          }
+        } else {
+          const hit = getIntersects(e);
+          if (hit && (hit.type === 'voxel' || hit.type === 'ground')) {
+            const pos = hit.type === 'voxel' ? getPlacePosition(hit.hit) : getGroundPlacePosition(hit.hit);
+            placeVoxel(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
+            dragLockedY = pos.y;
+            dragPlane.position.y = dragLockedY + currentSize * 0.5 + 0.001;
+            dragPlacedThisStroke = true;
+          }
+        }
+      }
+    });
+
+    canvas.addEventListener('mouseup', e => {
+      // Commit gizmo drag as undo-able command
+      if (gizmoDragging && activeGroupId && gizmoDragStartValue) {
+        const id = activeGroupId;
+        const g = groups.get(id);
+        if (g) {
+          const before = gizmoDragStartValue;
+          const t = playTime;
+          const afterPos = { x: g.group3d.position.x, y: g.group3d.position.y, z: g.group3d.position.z };
+          const afterRot = { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD };
+          const afterScl = { x: g.group3d.scale.x, y: g.group3d.scale.y, z: g.group3d.scale.z };
+          // Only record if something changed
+          const changed = JSON.stringify(before) !== JSON.stringify({ pos: afterPos, rot: afterRot, scl: afterScl });
+          if (changed) {
+            // Capture gizmo values at time of release for after-state keyframe
+            const afterKFPos = { x: +document.getElementById('kf-px').value, y: +document.getElementById('kf-py').value, z: +document.getElementById('kf-pz').value };
+            const afterKFRot = { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD };
+            const afterKFScl = { x: +document.getElementById('kf-sx').value, y: +document.getElementById('kf-sy').value, z: +document.getElementById('kf-sz').value };
+            const beforeKFs = JSON.parse(JSON.stringify(g.keyframes));
+            // apply current state as keyframe
+            const applyAfter = () => {
+              const grp = groups.get(id); if (!grp) return;
+              ['pos', 'rot', 'scl'].forEach(prop => {
+                grp.keyframes[prop] = grp.keyframes[prop].filter(k => Math.abs(k.time - t) > 0.001);
+              });
+              grp.keyframes.pos.push({ time: t, ...afterKFPos }); grp.keyframes.pos.sort((a, b) => a.time - b.time);
+              grp.keyframes.rot.push({ time: t, ...afterKFRot }); grp.keyframes.rot.sort((a, b) => a.time - b.time);
+              grp.keyframes.scl.push({ time: t, ...afterKFScl }); grp.keyframes.scl.sort((a, b) => a.time - b.time);
+              applyGroupTransform(id, t); updateTimelineDisplay();
+            };
+            const applyBefore = () => {
+              const grp = groups.get(id); if (!grp) return;
+              grp.keyframes = JSON.parse(JSON.stringify(beforeKFs));
+              applyGroupTransform(id, t); updateTimelineDisplay();
+            };
+            applyAfter(); // finalize state
+            executeCommand({ execute: applyAfter, undo: applyBefore });
+          }
+        }
+        gizmoDragStartValue = null;
+      }
+
+      // Commit paint stroke as single undo step
+      if (paintStrokeHistory.length > 0) {
+        const strokes = [...paintStrokeHistory];
+        executeCommand({
+          execute() { strokes.forEach(s => paintVoxel(s.x, s.y, s.z, s.newColor, s.newOpacity, true)); },
+          undo() { strokes.forEach(s => paintVoxel(s.x, s.y, s.z, s.oldColor, s.oldOpacity, true)); }
+        });
+        paintStrokeHistory.length = 0;
+      }
+
+      // Commit drag-place stroke as single undo step
+      if (dragPlaceHistory.length > 0) {
+        const placed = [...dragPlaceHistory];
+        executeCommand({
+          execute() { placed.forEach(p => placeVoxel(p.x, p.y, p.z, p.color, p.size, p.opacity, true)); },
+          undo() { placed.forEach(p => removeVoxelAt(p.x, p.y, p.z, true)); }
+        });
+        dragPlaceHistory.length = 0;
+      }
+
+      mouseDown = false; isOrbiting = false; isPanning = false; gizmoDragging = false;
+      dragLockedY = null; dragPlacedThisStroke = false;
+      isBoxSelecting = false;
+      if (boxSelectEl) { boxSelectEl.style.display = 'none'; }
+      if (e.button === 0 && currentTool === 'select' && boxSelectStart) {
+        finishBoxSelect(e);
+        boxSelectStart = null;
+      }
+      canvas.style.cursor = currentTool === 'add' ? 'crosshair' : currentTool === 'remove' ? 'not-allowed' : currentTool === 'paint' ? 'cell' : 'pointer';
+    });
+
+    canvas.addEventListener('wheel', e => {
+      e.preventDefault();
+      camRadius = Math.max(2, Math.min(200, camRadius * (1 + e.deltaY * 0.001)));
+      updateCamera();
+    }, { passive: false });
+
+    canvas.addEventListener('mouseleave', () => { ghostMesh.visible = false; });
+
+    // ─── GIZMO DRAG HANDLER ───────────────────────────────────
+    function handleGizmoDrag(e, dx, dy) {
+      const g = groups.get(activeGroupId);
+      if (!g) return;
+      const sensitivity = 0.03;
+      const rotSensitivity = 0.02;
+      const scaleSensitivity = 0.01;
+      const combined = -dy + dx;
+
+      if (gizmoMode === 'translate') {
+        const delta = combined * sensitivity;
+        const cur = interpolateGroupTransform(g, playTime);
+        const newPos = { ...cur.pos };
+        if (gizmoDragAxis === 'x') newPos.x += dx * sensitivity;
+        if (gizmoDragAxis === 'y') newPos.y -= dy * sensitivity;
+        if (gizmoDragAxis === 'z') newPos.z += dx * sensitivity;
+        document.getElementById('kf-px').value = newPos.x.toFixed(2);
+        document.getElementById('kf-py').value = newPos.y.toFixed(2);
+        document.getElementById('kf-pz').value = newPos.z.toFixed(2);
+        g.group3d.position.set(newPos.x, newPos.y, newPos.z);
+        gizmoGroup.position.copy(g.group3d.position);
+      } else if (gizmoMode === 'rotate') {
+        const delta = combined * rotSensitivity;
+        const cur = interpolateGroupTransform(g, playTime);
+        if (gizmoDragAxis === 'x') { const v = +document.getElementById('kf-rx').value + delta * RAD2DEG; document.getElementById('kf-rx').value = v.toFixed(1); g.group3d.rotation.x = v * DEG2RAD; }
+        if (gizmoDragAxis === 'y') { const v = +document.getElementById('kf-ry').value + delta * RAD2DEG; document.getElementById('kf-ry').value = v.toFixed(1); g.group3d.rotation.y = v * DEG2RAD; }
+        if (gizmoDragAxis === 'z') { const v = +document.getElementById('kf-rz').value + delta * RAD2DEG; document.getElementById('kf-rz').value = v.toFixed(1); g.group3d.rotation.z = v * DEG2RAD; }
+      } else if (gizmoMode === 'scale') {
+        const cur = interpolateGroupTransform(g, playTime);
+        if (gizmoDragAxis === 'x') { const v = Math.max(0.01, +document.getElementById('kf-sx').value + combined * scaleSensitivity); document.getElementById('kf-sx').value = v.toFixed(3); g.group3d.scale.x = v; }
+        if (gizmoDragAxis === 'y') { const v = Math.max(0.01, +document.getElementById('kf-sy').value + combined * scaleSensitivity); document.getElementById('kf-sy').value = v.toFixed(3); g.group3d.scale.y = v; }
+        if (gizmoDragAxis === 'z') { const v = Math.max(0.01, +document.getElementById('kf-sz').value + combined * scaleSensitivity); document.getElementById('kf-sz').value = v.toFixed(3); g.group3d.scale.z = v; }
+      }
+    }
+
+    // ─── TOOL MANAGEMENT ──────────────────────────────────────
+    function setTool(tool) {
+      currentTool = tool;
+      ['add', 'remove', 'paint', 'select'].forEach(t => {
+        document.getElementById('btn-tool-' + t).classList.toggle('active', t === tool);
+        document.getElementById('ptool-' + t).classList.toggle('active', t === tool);
+      });
+      document.getElementById('st-tool').textContent = tool.toUpperCase();
+      document.getElementById('st-hint').textContent = {
+        add: 'Left click / drag to place voxels',
+        remove: 'Left click to remove voxel',
+        paint: 'Left click / drag to paint voxels',
+        select: 'Click voxel or drag empty space to box-select'
+      }[tool];
+      canvas.style.cursor = { add: 'crosshair', remove: 'not-allowed', paint: 'cell', select: 'pointer' }[tool];
+      ghostMesh.visible = false;
+      // Show selection options only in select mode
+      const selPanel = document.getElementById('sel-options-panel');
+      if (selPanel) selPanel.classList.toggle('show', tool === 'select');
+    }
+
+    // ─── TOGGLE VIEW ──────────────────────────────────────────
+    function toggleGrid() {
+      gridVisible = !gridVisible;
+      gridHelper.visible = gridVisible;
+      document.getElementById('btn-grid').classList.toggle('active', gridVisible);
+    }
+
+    function toggleWireframe() {
+      wireframeMode = !wireframeMode;
+      voxels.forEach(v => { v.mesh.material.wireframe = wireframeMode; });
+      document.getElementById('btn-wire').classList.toggle('active', wireframeMode);
+    }
+
+    // ─── STATS UPDATE ─────────────────────────────────────────
+    function updateStats() {
+      const count = voxels.size;
+      document.getElementById('stat-voxels').textContent = count;
+      document.getElementById('stat-groups').textContent = groups.size;
+      document.getElementById('stat-selected').textContent = selectedVoxels.size;
+      document.getElementById('st-voxels').textContent = count;
+      renderGroupList();
+    }
+
+    // ─── EXPORT ───────────────────────────────────────────────
+    function openExportModal() {
+      const bg = document.createElement('div');
+      bg.className = 'modal-bg';
+      bg.innerHTML = `<div class="modal-box">
+    <h3>EXPORT</h3>
+    <p>Choose export format:</p>
+    <div style="display:flex;flex-direction:column;gap:6px">
+      <button class="tb-btn" onclick="exportOBJ();this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📄 Wavefront OBJ (.obj)</button>
+      <button class="tb-btn" onclick="exportGLTF();this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📦 glTF 2.0 (.gltf)</button>
+      <button class="tb-btn" onclick="exportVOX();this.closest('.modal-bg').remove()" style="width:100%;text-align:left">🧱 MagicaVoxel (.vox — basic)</button>
+      <button class="tb-btn" onclick="exportPLY();this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📐 Stanford PLY (.ply)</button>
+    </div>
+    <div class="modal-btns"><button class="tb-btn" onclick="this.closest('.modal-bg').remove()">Cancel</button></div>
+  </div>`;
+      document.body.appendChild(bg);
+    }
+
+    function exportOBJ() {
+      let obj = '# VoxForge OBJ Export\n# Generated by VoxForge Voxel Editor\n\n';
+      let mtl = '# VoxForge MTL Export\n\n';
+      const colorMap = new Map();
+      let matIndex = 0;
+      let vertOffset = 0;
+
+      // Collect unique colors
+      voxels.forEach(v => { if (!colorMap.has(v.color)) { colorMap.set(v.color, 'mat_' + (matIndex++)); } });
+
+      // Materials
+      colorMap.forEach((matName, color) => {
+        const r = parseInt(color.slice(1, 3), 16) / 255;
+        const g = parseInt(color.slice(3, 5), 16) / 255;
+        const b = parseInt(color.slice(5, 7), 16) / 255;
+        mtl += `newmtl ${matName}\nKd ${r.toFixed(4)} ${g.toFixed(4)} ${b.toFixed(4)}\nKa 0.1 0.1 0.1\nKs 0.0 0.0 0.0\n\n`;
+      });
+
+      obj += 'mtllib voxforge_export.mtl\n\n';
+
+      // Geometry
+      voxels.forEach((v, key) => {
+        const s = v.size;
+        const pos = v.mesh.position.clone();
+        const px = pos.x - s * 0.5, py = pos.y - s * 0.5, pz = pos.z - s * 0.5;
+
+        // 8 vertices
+        const verts = [
+          [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
+          [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
+        ];
+        verts.forEach(([x, y, z]) => obj += `v ${x.toFixed(4)} ${y.toFixed(4)} ${z.toFixed(4)}\n`);
+
+        const o = vertOffset + 1;
+        obj += `usemtl ${colorMap.get(v.color)}\n`;
+        obj += `f ${o} ${o + 1} ${o + 2} ${o + 3}\n`; // bottom
+        obj += `f ${o + 7} ${o + 6} ${o + 5} ${o + 4}\n`; // top
+        obj += `f ${o + 4} ${o + 5} ${o + 1} ${o}\n`; // front
+        obj += `f ${o + 5} ${o + 6} ${o + 2} ${o + 1}\n`; // right
+        obj += `f ${o + 6} ${o + 7} ${o + 3} ${o + 2}\n`; // back
+        obj += `f ${o + 7} ${o + 4} ${o} ${o + 3}\n`; // left
+        vertOffset += 8;
+      });
+
+      downloadText(obj, 'voxforge_export.obj');
+      downloadText(mtl, 'voxforge_export.mtl');
+      notify('OBJ + MTL exported');
+    }
+
+    function exportGLTF() {
+      // Build a minimal valid glTF 2.0 JSON
+      const meshes = []; const nodes = []; const accessors = [];
+      const bufferViews = []; const positions = []; const indices = [];
+      let bufferByteLength = 0;
+
+      voxels.forEach((v, key) => {
+        const s = v.size;
+        const p = v.mesh.position;
+        const px = p.x - s * 0.5, py = p.y - s * 0.5, pz = p.z - s * 0.5;
+
+        const r = parseInt(v.color.slice(1, 3), 16) / 255;
+        const g = parseInt(v.color.slice(3, 5), 16) / 255;
+        const b = parseInt(v.color.slice(5, 7), 16) / 255;
+
+        const verts = [
+          [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
+          [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
+        ];
+
+        const idx = [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0];
+
+        meshes.push({ vertices: verts, indices: idx, color: [r, g, b, 1.0] });
+      });
+
+      // Simple approach: single buffer, all voxels
+      // Build Float32Array for positions, Uint16Array for indices
+      const allPositions = [];
+      const allIndices = [];
+      const meshDefs = [];
+      let vBase = 0;
+
+      meshes.forEach((m, mi) => {
+        const posStart = allPositions.length;
+        m.vertices.forEach(v => allPositions.push(...v));
+        const idxStart = allIndices.length;
+        m.indices.forEach(i => allIndices.push(i + vBase));
+        vBase += m.vertices.length;
+        meshDefs.push({ posStart, posCount: m.vertices.length * 3, idxStart, idxCount: m.indices.length, color: m.color });
+      });
+
+      const posBuffer = new Float32Array(allPositions);
+      const idxBuffer = new Uint16Array(allIndices);
+
+      const posBytes = posBuffer.buffer;
+      const idxBytes = idxBuffer.buffer;
+
+      // Encode to base64
+      const posB64 = arrayBufferToBase64(posBytes);
+      const idxB64 = arrayBufferToBase64(idxBytes);
+
+      const gltf = {
+        asset: { version: '2.0', generator: 'VoxForge Voxel Editor' },
+        scene: 0,
+        scenes: [{ nodes: meshDefs.map((_, i) => i) }],
+        nodes: meshDefs.map((_, i) => ({ mesh: i, name: `voxel_${i}` })),
+        meshes: meshDefs.map((m, i) => ({
+          name: `voxel_mesh_${i}`,
+          primitives: [{
+            attributes: { POSITION: i * 2 },
+            indices: i * 2 + 1,
+            material: i
+          }]
+        })),
+        accessors: meshDefs.flatMap((m, i) => [
+          {
+            bufferView: i * 2,
+            componentType: 5126, // FLOAT
+            count: m.vertices ? m.posCount / 3 : 8,
+            type: 'VEC3',
+            min: [0, 0, 0], max: [1, 1, 1]
+          },
+          {
+            bufferView: i * 2 + 1,
+            componentType: 5123, // UNSIGNED_SHORT
+            count: m.idxCount,
+            type: 'SCALAR'
+          }
+        ]),
+        materials: meshDefs.map((m, i) => ({
+          name: `mat_${i}`,
+          pbrMetallicRoughness: {
+            baseColorFactor: m.color,
+            metallicFactor: 0.0,
+            roughnessFactor: 0.8
+          }
+        })),
+        bufferViews: meshDefs.flatMap((m, i) => [
+          { buffer: i * 2, byteOffset: 0, byteLength: m.posCount * 4, target: 34962 },
+          { buffer: i * 2 + 1, byteOffset: 0, byteLength: m.idxCount * 2, target: 34963 }
+        ]),
+        buffers: meshDefs.flatMap((m, i) => [
+          { uri: 'data:application/octet-stream;base64,' + posB64, byteLength: posBytes.byteLength },
+          { uri: 'data:application/octet-stream;base64,' + idxB64, byteLength: idxBytes.byteLength }
+        ])
+      };
+
+      downloadJSON(gltf, 'voxforge_export.gltf');
+      notify('GLTF exported');
+    }
+
+    function arrayBufferToBase64(buffer) {
+      let binary = '';
+      const bytes = new Uint8Array(buffer);
+      bytes.forEach(b => binary += String.fromCharCode(b));
+      return btoa(binary);
+    }
+
+    function exportPLY() {
+      let verts = [], faces = [];
+      let vOffset = 0;
+      voxels.forEach(v => {
+        const s = v.size;
+        const p = v.mesh.position;
+        const px = p.x - s * 0.5, py = p.y - s * 0.5, pz = p.z - s * 0.5;
+        const r = parseInt(v.color.slice(1, 3), 16), g = parseInt(v.color.slice(3, 5), 16), b = parseInt(v.color.slice(5, 7), 16);
+        const vs = [
+          [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
+          [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
+        ];
+        vs.forEach(([x, y, z]) => verts.push(`${x.toFixed(4)} ${y.toFixed(4)} ${z.toFixed(4)} ${r} ${g} ${b}`));
+        const o = vOffset;
+        [[o, o + 1, o + 2, o + 3], [o + 7, o + 6, o + 5, o + 4], [o, o + 4, o + 5, o + 1], [o + 1, o + 5, o + 6, o + 2], [o + 2, o + 6, o + 7, o + 3], [o + 3, o + 7, o + 4, o]].forEach(f => faces.push('4 ' + f.join(' ')));
+        vOffset += 8;
+      });
+      const ply = `ply\nformat ascii 1.0\ncomment VoxForge export\nelement vertex ${verts.length}\nproperty float x\nproperty float y\nproperty float z\nproperty uchar red\nproperty uchar green\nproperty uchar blue\nelement face ${faces.length}\nproperty list uchar int vertex_indices\nend_header\n${verts.join('\n')}\n${faces.join('\n')}\n`;
+      downloadText(ply, 'voxforge_export.ply');
+      notify('PLY exported');
+    }
+
+    function exportVOX() {
+      // Basic VOX file structure (MagicaVoxel compatible)
+      // This is a simplified version
+      notify('VOX export: use OBJ for best compatibility');
+      exportOBJ();
+    }
+
+    // ─── SAVE / LOAD ──────────────────────────────────────────
+    function saveProject() {
+      const data = {
+        version: 1,
+        voxels: [],
+        groups: [],
+        animations: []
+      };
+      voxels.forEach((v, key) => {
+        data.voxels.push({ key, x: v.mesh.userData.x, y: v.mesh.userData.y, z: v.mesh.userData.z, color: v.color, size: v.size, opacity: v.opacity });
+      });
+      groups.forEach((g, id) => {
+        data.groups.push({
+          id, name: g.name, color: g.color,
+          voxelKeys: [...g.voxelKeys],
+          keyframes: g.keyframes,
+          animDuration
+        });
+      });
+      downloadJSON(data, 'voxforge_project.voxforge');
+      notify('Project saved');
+    }
+
+    function loadProject() { document.getElementById('file-input').click(); }
+
+    function onFileLoad(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const data = JSON.parse(ev.target.result);
+          clearScene();
+          data.voxels.forEach(v => placeVoxel(v.x, v.y, v.z, v.color, v.size, v.opacity || 1, true));
+          if (data.groups) {
+            data.groups.forEach(gd => {
+              const group3d = new THREE.Group();
+              group3d.userData.id = gd.id;
+              const voxelKeys = new Set(gd.voxelKeys);
+              voxelKeys.forEach(k => {
+                const vd = voxels.get(k);
+                if (vd) { voxelRoot.remove(vd.mesh); group3d.add(vd.mesh); }
+              });
+              scene.add(group3d);
+              groups.set(gd.id, { name: gd.name, voxelKeys, color: gd.color, group3d, keyframes: gd.keyframes || { pos: [], rot: [], scl: [] }, origPositions: new Map() });
+              groupCounter = Math.max(groupCounter, parseInt(gd.id.replace('grp_', '')) || 0);
+              if (gd.animDuration) animDuration = gd.animDuration;
+            });
+          }
+          document.getElementById('anim-duration').value = animDuration;
+          updateDuration();
+          updateStats(); renderGroupList();
+          notify('Project loaded: ' + file.name);
+        } catch (err) { notify('Error loading: ' + err.message); }
+        e.target.value = '';
+      };
+      reader.readAsText(file);
+    }
+
+    function clearScene() {
+      voxels.forEach((v, k) => { voxelRoot.remove(v.mesh); v.mesh.geometry.dispose(); v.mesh.material.dispose(); });
+      voxels.clear();
+      groups.forEach((g, id) => { scene.remove(g.group3d); });
+      groups.clear();
+      selectedVoxels.clear();
+      activeGroupId = null;
+      history.length = 0; historyIndex = -1;
+      updateStats();
+    }
+
+    // ─── UTILS ────────────────────────────────────────────────
+    function downloadText(text, filename) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+      a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    function downloadJSON(obj, filename) {
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' }));
+      a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+    }
+
+    let notifTimer = null;
+    function notify(msg) {
+      const el = document.getElementById('notif');
+      el.textContent = msg; el.classList.add('show');
+      clearTimeout(notifTimer);
+      notifTimer = setTimeout(() => el.classList.remove('show'), 2200);
+    }
+
+    // ─── KEYBOARD SHORTCUTS ───────────────────────────────────
+    document.addEventListener('keydown', e => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+      if (e.key === '1') setTool('add');
+      else if (e.key === '2') setTool('remove');
+      else if (e.key === '3') setTool('paint');
+      else if (e.key === '4') setTool('select');
+      else if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); }
+      else if ((e.ctrlKey && e.key === 'y') || (e.ctrlKey && e.shiftKey && e.key === 'Z')) { e.preventDefault(); redo(); }
+      else if (e.ctrlKey && e.key === 'a') { e.preventDefault(); setTool('select'); selectAll(); }
+      else if (e.ctrlKey && e.key === 's') { e.preventDefault(); saveProject(); }
+      else if (e.key === 'Delete' || e.key === 'Backspace') deleteSelected();
+      else if (e.key === 'g' || e.key === 'G') toggleGrid();
+      else if (e.key === 'w' || e.key === 'W') toggleWireframe();
+      else if (e.key === 'r' || e.key === 'R') resetCamera();
+      else if (e.key === 'Escape') { deselectAll(); stopAnim(); }
+      else if (e.key === ' ') { e.preventDefault(); togglePlayPause(); }
+      else if (e.key === ',') prevKeyframe();
+      else if (e.key === '.') nextKeyframe();
+    });
+
+    // ─── RESIZE ───────────────────────────────────────────────
+    function resize() {
+      const w = canvasWrap.clientWidth;
+      const h = canvasWrap.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener('resize', resize);
+
+    // ─── ANIMATION LOOP ───────────────────────────────────────
+    let lastFrameTime = performance.now();
+    let frameCount = 0;
+    let fpsLastUpdate = performance.now();
+
+    function animate(timestamp) {
+      requestAnimationFrame(animate);
+      const dt = (timestamp - lastFrameTime) / 1000;
+      lastFrameTime = timestamp;
+
+      // Play animation
+      if (isPlaying && activeGroupId) {
+        playTime += dt;
+        if (playTime > animDuration) playTime = 0; // loop
+        applyGroupTransform(activeGroupId, playTime);
+        updatePlayheadEl();
+        document.getElementById('anim-time').value = playTime.toFixed(2);
+        document.getElementById('tl-time-input').value = playTime.toFixed(2);
+        syncKFInputsFromTime();
+      }
+
+      // FPS counter
+      frameCount++;
+      if (timestamp - fpsLastUpdate > 1000) {
+        document.getElementById('fps-counter').textContent = frameCount + ' FPS';
+        frameCount = 0; fpsLastUpdate = timestamp;
+      }
+
+      // Animate selection outline pulse
+      if (outlineMeshes.size > 0) {
+        const pulse = 0.55 + 0.45 * Math.sin(timestamp * 0.004);
+        const r = Math.round(246 * pulse + 255 * (1 - pulse));
+        const g = Math.round(168 * pulse);
+        const b = Math.round(42 * pulse);
+        const pulseColor = (r << 16) | (g << 8) | b;
+        outlineMeshes.forEach(om => { om.material.color.setHex(pulseColor); });
+      }
+
+      renderer.render(scene, camera);
+    }
+
+    // ─── INITIAL SETUP ────────────────────────────────────────
+    buildPalette();
+    buildGizmo();
+    setTool('add');
+    resize();
+    updateDuration();
+    updateStats();
+    document.getElementById('btn-grid').classList.add('active');
+
+    // Place a few starter voxels for demonstration
+    function placeStarterScene() {
+      // Simple platform
+      for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) {
+        placeVoxel(x, -1, z, '#78c840', 1, 1, true);
+      }
+      // A small structure
+      placeVoxel(0, 0, 0, '#3880e0', 1, 1, true);
+      placeVoxel(1, 0, 0, '#3880e0', 1, 1, true);
+      placeVoxel(0, 0, 1, '#3880e0', 1, 1, true);
+      placeVoxel(1, 0, 1, '#3880e0', 1, 1, true);
+      placeVoxel(0, 1, 0, '#e05050', 1, 1, true);
+      placeVoxel(1, 1, 0, '#e05050', 1, 1, true);
+      placeVoxel(0, 1, 1, '#e05050', 1, 1, true);
+      placeVoxel(1, 1, 1, '#e05050', 1, 1, true);
+      // Clear history so starter scene isn't undoable
+      history.length = 0; historyIndex = -1;
+      updateStats();
+    }
+
+    placeStarterScene();
+    updateCamera();
+    animate(performance.now());
+
+  </script>
+</body>
+
+</html>
