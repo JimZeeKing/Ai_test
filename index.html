@@ -2831,6 +2831,8 @@
 Kd ${r.toFixed(4)} ${g.toFixed(4)} ${b.toFixed(4)}
 Ka 0.1 0.1 0.1
 Ks 0.0 0.0 0.0
+illum 1
+d 1.0
 
 `;
       });
@@ -2935,6 +2937,7 @@ Ks 0.0 0.0 0.0
       const nodes = [];
       const meshes = [];
       const materials = [];
+      const materialIndexByColor = new Map();
       const accessors = [];
       const bufferViews = [];
       const binaryChunks = [];
@@ -2988,11 +2991,16 @@ Ks 0.0 0.0 0.0
           const idxAccessor = accessors.length;
           accessors.push({ bufferView: idxView, componentType: useUint32 ? 5125 : 5123, count: primitive.indices.length, type: 'SCALAR' });
 
-          const materialIndex = materials.length;
-          materials.push({
-            name: `mat_${materialIndex}`,
-            pbrMetallicRoughness: { baseColorFactor: primitive.color, metallicFactor: 0, roughnessFactor: 0.8 }
-          });
+          const colorKey = primitive.color.map(c => Number(c).toFixed(4)).join(',');
+          let materialIndex = materialIndexByColor.get(colorKey);
+          if (materialIndex === undefined) {
+            materialIndex = materials.length;
+            materials.push({
+              name: `mat_${materialIndex}`,
+              pbrMetallicRoughness: { baseColorFactor: primitive.color, metallicFactor: 0, roughnessFactor: 0.8 }
+            });
+            materialIndexByColor.set(colorKey, materialIndex);
+          }
 
           gltfPrimitives.push({ attributes: { POSITION: posAccessor }, indices: idxAccessor, material: materialIndex });
         });
