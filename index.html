@@ -1447,8 +1447,9 @@
       selectedVoxels.clear();
       resetAllHighlights();
       activeGroupId = id;
-      setActiveGroup(id);
       renderGroupList();
+      setActiveGroup(id);
+      updateGizmoForGroup(id);
       updateStats();
       notify(`Group "${name}" created`);
       // Register undo for group creation
@@ -2148,7 +2149,7 @@
         up.crossVectors(right, new THREE.Vector3(0, 1, 0)).normalize();
         const panSpeed = camRadius * 0.001;
         camTarget.addScaledVector(right, -dx * panSpeed);
-        camTarget.addScaledVector(up, dy * panSpeed);
+        camTarget.addScaledVector(up, -dy * panSpeed);
         updateCamera(); return;
       }
 
@@ -2298,7 +2299,7 @@
         const newPos = { ...cur.pos };
         if (gizmoDragAxis === 'x') newPos.x += dx * sensitivity;
         if (gizmoDragAxis === 'y') newPos.y -= dy * sensitivity;
-        if (gizmoDragAxis === 'z') newPos.z += dx * sensitivity;
+        if (gizmoDragAxis === 'z') newPos.z -= dx * sensitivity;
         document.getElementById('kf-px').value = newPos.x.toFixed(2);
         document.getElementById('kf-py').value = newPos.y.toFixed(2);
         document.getElementById('kf-pz').value = newPos.z.toFixed(2);
@@ -2313,7 +2314,7 @@
         const cur = interpolateGroupTransform(g);
         if (gizmoDragAxis === 'x') { const v = +document.getElementById('kf-rx').value + delta * RAD2DEG; document.getElementById('kf-rx').value = v.toFixed(1); }
         if (gizmoDragAxis === 'y') { const v = +document.getElementById('kf-ry').value + delta * RAD2DEG; document.getElementById('kf-ry').value = v.toFixed(1); }
-        if (gizmoDragAxis === 'z') { const v = +document.getElementById('kf-rz').value + delta * RAD2DEG; document.getElementById('kf-rz').value = v.toFixed(1); }
+        if (gizmoDragAxis === 'z') { const v = +document.getElementById('kf-rz').value - delta * RAD2DEG; document.getElementById('kf-rz').value = v.toFixed(1); }
         applyGroupTransformFromValues(g, {
           pos: { x: +document.getElementById('kf-px').value, y: +document.getElementById('kf-py').value, z: +document.getElementById('kf-pz').value },
           rot: { x: +document.getElementById('kf-rx').value * DEG2RAD, y: +document.getElementById('kf-ry').value * DEG2RAD, z: +document.getElementById('kf-rz').value * DEG2RAD },
