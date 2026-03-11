@@ -856,6 +856,21 @@
           <button class="tool-btn" id="ptool-select" onclick="setTool('select')"><span
               class="tool-icon">⬚</span>Select</button>
         </div>
+        <div style="margin-top:8px;padding-top:6px;border-top:1px solid #1e1e28">
+          <div class="panel-title" style="font-size:7px;color:#f6a82a88;margin-bottom:4px">Draw Mirror</div>
+          <span class="small-label" style="display:block;margin-bottom:3px">Mirror placement while drawing (max 2 axes)</span>
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3px">
+            <label class="size-btn" style="display:flex;align-items:center;justify-content:center;gap:3px;padding:4px 2px">
+              <input type="checkbox" id="draw-mirror-x" onchange="toggleDrawMirrorAxis('x', this.checked)">X
+            </label>
+            <label class="size-btn" style="display:flex;align-items:center;justify-content:center;gap:3px;padding:4px 2px">
+              <input type="checkbox" id="draw-mirror-y" onchange="toggleDrawMirrorAxis('y', this.checked)">Y
+            </label>
+            <label class="size-btn" style="display:flex;align-items:center;justify-content:center;gap:3px;padding:4px 2px">
+              <input type="checkbox" id="draw-mirror-z" onchange="toggleDrawMirrorAxis('z', this.checked)">Z
+            </label>
+          </div>
+        </div>
       </div>
 
       <!-- SELECTION OPTIONS — visible only in select mode -->
@@ -873,9 +888,6 @@
           Selection</button>
         <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1e1e28">
           <div class="panel-title" style="font-size:7px;color:#f6a82a88;margin-bottom:4px">Voxel QOL</div>
-          <button class="sel-op-btn" onclick="mirrorSelection('x')" title="Mirror selection across X axis">⇋ Mirror X</button>
-          <button class="sel-op-btn" onclick="mirrorSelection('y')" title="Mirror selection across Y axis">⇵ Mirror Y</button>
-          <button class="sel-op-btn" onclick="mirrorSelection('z')" title="Mirror selection across Z axis">⥮ Mirror Z</button>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:4px 0">
             <input type="number" id="array-count" value="3" min="2" max="24" title="Array copies">
             <select id="array-axis" title="Array axis">
@@ -1264,6 +1276,7 @@
     let animDuration = 2;
     let tlVisible = false;
     const ANIMATION_ENABLED = false;
+    const drawMirrorAxes = new Set();
 
     // Main voxel store: key "x,y,z" -> { mesh, color, size, opacity }
     const voxels = new Map();
@@ -1412,6 +1425,54 @@
     function parseKey(k) { const p = k.split(','); return { x: +p[0], y: +p[1], z: +p[2] }; }
 
     function snapToGrid(v, size) { return Math.round(v / size) * size; }
+
+    function getMirroredCoord(axis, value, size) {
+      return axis === 'x' || axis === 'y' || axis === 'z' ? -(value + size) : value;
+    }
+
+    function getDrawMirrorPlacements(x, y, z, size) {
+      const axes = [...drawMirrorAxes];
+      if (!axes.length) return [{ x, y, z }];
+      const combos = [{ x, y, z }];
+      axes.forEach(axis => {
+        const additions = [];
+        combos.forEach(c => {
+          const m = { ...c };
+          m[axis] = getMirroredCoord(axis, m[axis], size);
+          additions.push(m);
+        });
+        combos.push(...additions);
+      });
+      const out = [];
+      const seen = new Set();
+      combos.forEach(c => {
+        const k = voxelKey(c.x, c.y, c.z);
+        if (!seen.has(k)) { seen.add(k); out.push(c); }
+      });
+      return out;
+    }
+
+    function placeVoxelWithMirroring(x, y, z, color, size, opacity) {
+      const placements = getDrawMirrorPlacements(x, y, z, size);
+      placements.forEach(p => placeVoxel(p.x, p.y, p.z, color, size, opacity));
+    }
+
+    function toggleDrawMirrorAxis(axis, enabled) {
+      if (!['x', 'y', 'z'].includes(axis)) return;
+      if (enabled) {
+        if (drawMirrorAxes.has(axis)) return;
+        if (drawMirrorAxes.size >= 2) {
+          const cb = document.getElementById(`draw-mirror-${axis}`);
+          if (cb) cb.checked = false;
+          notify('Draw mirror supports up to 2 axes at once');
+          return;
+        }
+        drawMirrorAxes.add(axis);
+      } else {
+        drawMirrorAxes.delete(axis);
+      }
+      notify(drawMirrorAxes.size ? `Draw mirror: ${[...drawMirrorAxes].map(a => a.toUpperCase()).join(' + ')}` : 'Draw mirror disabled');
+    }
 
     function placeVoxel(x, y, z, color, size, opacity, skipHistory) {
       const key = voxelKey(x, y, z);
@@ -2314,31 +2375,33 @@
       if (!src.length) { notify('Select voxels first'); return; }
       const count = Math.max(1, Math.min(500, +(document.getElementById('scatter-count')?.value || 12) | 0));
       const radius = Math.max(1, Math.min(64, +(document.getElementById('scatter-radius')?.value || 6)));
-      let cx = 0, cy = 0, cz = 0;
-      src.forEach(v => { cx += v.x; cy += v.y; cz += v.z; });
-      cx /= src.length; cy /= src.length; cz /= src.length;
       const out = [];
       const seen = new Set();
+      const minSize = Math.max(1, Math.min(...src.map(v => v.size)));
       for (let i = 0; i < count; i++) {
-        const base = src[i % src.length];
         let tries = 0;
         while (tries < 20) {
           tries++;
-          const dx = (Math.random() * 2 - 1) * radius;
-          const dy = (Math.random() * 2 - 1) * Math.max(1, radius * 0.5);
-          const dz = (Math.random() * 2 - 1) * radius;
-          const x = snapToGrid(cx + dx, base.size);
-          const y = Math.max(0, snapToGrid(cy + dy, base.size));
-          const z = snapToGrid(cz + dz, base.size);
-          const k = voxelKey(x, y, z);
-          if (!voxels.has(k) && !seen.has(k)) {
-            seen.add(k);
-            out.push({ x, y, z, color: base.color, size: base.size, opacity: base.opacity });
+          const ox = snapToGrid((Math.random() * 2 - 1) * radius, minSize);
+          const oy = snapToGrid((Math.random() * 2 - 1) * Math.max(1, radius * 0.5), minSize);
+          const oz = snapToGrid((Math.random() * 2 - 1) * radius, minSize);
+          const chunk = [];
+          let blocked = false;
+          for (const v of src) {
+            const y = v.y + oy;
+            if (y < 0) { blocked = true; break; }
+            const c = { x: v.x + ox, y, z: v.z + oz, color: v.color, size: v.size, opacity: v.opacity };
+            const k = voxelKey(c.x, c.y, c.z);
+            if (voxels.has(k) || seen.has(k)) { blocked = true; break; }
+            chunk.push(c);
+          }
+          if (!blocked) {
+            chunk.forEach(c => { seen.add(voxelKey(c.x, c.y, c.z)); out.push(c); });
             break;
           }
         }
       }
-      addVoxelBatch(out, `Scattered ${out.length} voxels in radius ${radius}`);
+      addVoxelBatch(out, `Scattered ${Math.floor(out.length / src.length)} copied selection chunk(s) in radius ${radius}`);
     }
 
     // ─── BOX SELECT ───────────────────────────────────────────
@@ -2508,13 +2571,13 @@
           if (!hit) return;
           if (hit.type === 'voxel') {
             const pos = getPlacePosition(hit.hit);
-            placeVoxel(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
+            placeVoxelWithMirroring(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
             dragLockedY = pos.y;
             dragPlane.position.y = dragLockedY + currentSize * 0.5 + 0.001;
             dragPlacedThisStroke = true;
           } else if (hit.type === 'ground') {
             const pos = getGroundPlacePosition(hit.hit);
-            placeVoxel(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
+            placeVoxelWithMirroring(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
             dragLockedY = pos.y;
             dragPlane.position.y = dragLockedY + currentSize * 0.5 + 0.001;
             dragPlacedThisStroke = true;
@@ -2619,13 +2682,13 @@
             const s = currentSize;
             const x = snapToGrid(p.x - s * 0.5, s);
             const z = snapToGrid(p.z - s * 0.5, s);
-            placeVoxel(x, dragLockedY, z, currentColor, s, currentOpacity);
+            placeVoxelWithMirroring(x, dragLockedY, z, currentColor, s, currentOpacity);
           }
         } else {
           const hit = getIntersects(e);
           if (hit && (hit.type === 'voxel' || hit.type === 'ground')) {
             const pos = hit.type === 'voxel' ? getPlacePosition(hit.hit) : getGroundPlacePosition(hit.hit);
-            placeVoxel(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
+            placeVoxelWithMirroring(pos.x, pos.y, pos.z, currentColor, currentSize, currentOpacity);
             dragLockedY = pos.y;
             dragPlane.position.y = dragLockedY + currentSize * 0.5 + 0.001;
             dragPlacedThisStroke = true;
