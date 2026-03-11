@@ -2855,14 +2855,14 @@ d 1.0
             if (splitByColor && firstFace) {
               obj += `o part_${safeColorName(partKey)}\n`;
               obj += `g part_${safeColorName(partKey)}\n`;
-              obj += `usemtl ${colorMap.get(firstFace.color)}\n`;
             } else {
               obj += `o greedy_${safeColorName(partKey)}\n`;
             }
             partFaces.forEach(f => {
               f.verts.forEach(([x, y, z]) => obj += `v ${(x * voxelSize * exportScale).toFixed(4)} ${(y * voxelSize * exportScale).toFixed(4)} ${(z * voxelSize * exportScale).toFixed(4)}\n`);
               const o = vertOffset + 1;
-              if (!splitByColor) obj += `usemtl ${colorMap.get(f.color)}\n`;
+              const faceMaterial = splitByColor ? colorMap.get(firstFace.color) : colorMap.get(f.color);
+              obj += `usemtl ${faceMaterial}\n`;
               obj += `f ${o} ${o + 1} ${o + 2} ${o + 3}\n`;
               vertOffset += 4;
             });
@@ -2884,7 +2884,6 @@ d 1.0
           if (groupVoxels.length === 0) return;
           obj += `o part_${safeColorName(partKey)}\n`;
           obj += `g part_${safeColorName(partKey)}\n`;
-          if (splitByColor) obj += `usemtl ${colorMap.get(partKey)}\n`;
 
           groupVoxels.forEach(v => {
             const s = v.size;
@@ -2897,7 +2896,8 @@ d 1.0
             verts.forEach(([x, y, z]) => obj += `v ${(x * exportScale).toFixed(4)} ${(y * exportScale).toFixed(4)} ${(z * exportScale).toFixed(4)}\n`);
 
             const o = vertOffset + 1;
-            if (!splitByColor) obj += `usemtl ${colorMap.get(v.color)}\n`;
+            const voxelMaterial = splitByColor ? colorMap.get(partKey) : colorMap.get(v.color);
+            obj += `usemtl ${voxelMaterial}\n`;
             obj += `f ${o + 3} ${o + 2} ${o + 1} ${o}\n`;
             obj += `f ${o + 4} ${o + 5} ${o + 6} ${o + 7}\n`;
             obj += `f ${o + 3} ${o} ${o + 4} ${o + 7}\n`;
