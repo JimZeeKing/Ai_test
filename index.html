@@ -1243,6 +1243,7 @@
     let playTime = 0;
     let animDuration = 2;
     let tlVisible = false;
+    const ANIMATION_ENABLED = false;
 
     // Main voxel store: key "x,y,z" -> { mesh, color, size, opacity }
     const voxels = new Map();
@@ -1648,6 +1649,7 @@
 
     // ─── ANIMATION SYSTEM ─────────────────────────────────────
     function updateDuration() {
+      if (!ANIMATION_ENABLED) return;
       animDuration = Math.max(0.1, +document.getElementById('anim-duration').value);
       document.getElementById('tl-total-time').textContent = animDuration.toFixed(1);
       document.getElementById('tl-dur-label').textContent = animDuration.toFixed(1) + 's';
@@ -1656,6 +1658,7 @@
     }
 
     function setPlayheadTime(t) {
+      if (!ANIMATION_ENABLED) return;
       playTime = Math.max(0, Math.min(animDuration, t));
       document.getElementById('anim-time').value = playTime.toFixed(2);
       document.getElementById('tl-time-input').value = playTime.toFixed(2);
@@ -1811,16 +1814,19 @@
     }
 
     function togglePlayPause() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       if (isPlaying) { pauseAnim(); } else { playAnim(); }
     }
 
     function playAnim() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       if (!activeGroupId) { notify('Select a group first'); return; }
       isPlaying = true;
       setPlayButtonState(true);
     }
 
     function pauseAnim() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       isPlaying = false;
       setPlayButtonState(false);
     }
@@ -1835,6 +1841,7 @@
     }
 
     function prevKeyframe() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       const times = getAllKeyframeTimes();
       const prev = times.filter(t => t < playTime - 0.001);
       if (prev.length > 0) setPlayheadTime(prev[prev.length - 1]);
@@ -1842,6 +1849,7 @@
     }
 
     function nextKeyframe() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       const times = getAllKeyframeTimes();
       const next = times.filter(t => t > playTime + 0.001);
       if (next.length > 0) setPlayheadTime(next[0]);
@@ -1878,6 +1886,7 @@
     const _addKeyframeOrig = addKeyframe;
     // Override addKeyframe to record undo
     function addKeyframe() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       if (!activeGroupId) return;
       const g = groups.get(activeGroupId);
       if (!g) return;
@@ -1902,14 +1911,9 @@
       });
     }
 
-    function playAnim() {
-      if (!activeGroupId) { notify('Select a group first'); return; }
-      isPlaying = true;
-      document.getElementById('btn-play').textContent = '⏸ PAUSE';
-      document.getElementById('tl-btn-play').textContent = '⏸';
-    }
 
     function stopAnim() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       isPlaying = false;
       playTime = 0;
       setPlayButtonState(false);
@@ -1918,6 +1922,7 @@
 
     // ─── TIMELINE UI ──────────────────────────────────────────
     function toggleTimeline() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       tlVisible = !tlVisible;
       document.getElementById('timeline').classList.toggle('show', tlVisible);
       document.getElementById('canvas-wrap').classList.toggle('tl-open', tlVisible);
@@ -1985,6 +1990,7 @@
     }
 
     function exportAnimJSON() {
+      if (!ANIMATION_ENABLED) { notify('Animation is temporarily disabled.'); return; }
       if (!activeGroupId) return;
       const g = groups.get(activeGroupId);
       const data = {
@@ -2662,18 +2668,120 @@
       bg.innerHTML = `<div class="modal-box">
     <h3>EXPORT</h3>
     <p>Choose export format:</p>
+    <label style="display:flex;align-items:center;gap:6px;font-size:9px;color:#999;margin:6px 0 8px">
+      <input id="export-greedy" type="checkbox" style="accent-color:#f6a82a"> Use greedy meshing
+    </label>
     <div style="display:flex;flex-direction:column;gap:6px">
-      <button class="tb-btn" onclick="exportOBJ();this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📄 Wavefront OBJ (.obj)</button>
-      <button class="tb-btn" onclick="exportGLTF();this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📦 glTF 2.0 (.gltf)</button>
-      <button class="tb-btn" onclick="exportVOX();this.closest('.modal-bg').remove()" style="width:100%;text-align:left">🧱 MagicaVoxel (.vox — basic)</button>
-      <button class="tb-btn" onclick="exportPLY();this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📐 Stanford PLY (.ply)</button>
+      <button class="tb-btn" onclick="exportOBJ(getExportGreedyOption(this));this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📄 Wavefront OBJ (.obj)</button>
+      <button class="tb-btn" onclick="exportGLTF(getExportGreedyOption(this));this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📦 glTF 2.0 (.gltf)</button>
+      <button class="tb-btn" onclick="exportVOX(getExportGreedyOption(this));this.closest('.modal-bg').remove()" style="width:100%;text-align:left">🧱 MagicaVoxel (.vox — basic)</button>
+      <button class="tb-btn" onclick="exportPLY(getExportGreedyOption(this));this.closest('.modal-bg').remove()" style="width:100%;text-align:left">📐 Stanford PLY (.ply)</button>
     </div>
     <div class="modal-btns"><button class="tb-btn" onclick="this.closest('.modal-bg').remove()">Cancel</button></div>
   </div>`;
       document.body.appendChild(bg);
     }
 
-    function exportOBJ() {
+    function getExportGreedyOption(el) {
+      const box = el.closest('.modal-box');
+      return !!(box && box.querySelector('#export-greedy') && box.querySelector('#export-greedy').checked);
+    }
+
+    function buildGreedyMeshFaces() {
+      if (voxels.size === 0) return { faces: [], voxelSize: 1 };
+
+      let voxelSize = null;
+      const solid = new Map();
+      voxels.forEach(v => {
+        if (voxelSize === null) voxelSize = v.size;
+        if (Math.abs(v.size - voxelSize) > 1e-6) throw new Error('Greedy export requires a uniform voxel size.');
+        const { x, y, z } = v.mesh.userData;
+        solid.set(`${x},${y},${z}`, v.color);
+      });
+
+      const allCoords = [...solid.keys()].map(k => k.split(',').map(Number));
+      const xs = allCoords.map(c => c[0]), ys = allCoords.map(c => c[1]), zs = allCoords.map(c => c[2]);
+      const min = [Math.min(...xs), Math.min(...ys), Math.min(...zs)];
+      const max = [Math.max(...xs), Math.max(...ys), Math.max(...zs)];
+
+      const faces = [];
+      const x = [0, 0, 0];
+      const q = [0, 0, 0];
+
+      for (let d = 0; d < 3; d++) {
+        const u = (d + 1) % 3;
+        const v = (d + 2) % 3;
+        const dims = [max[0] - min[0] + 1, max[1] - min[1] + 1, max[2] - min[2] + 1];
+        const mask = new Array(dims[u] * dims[v]);
+        q[0] = q[1] = q[2] = 0;
+        q[d] = 1;
+
+        for (x[d] = -1; x[d] < dims[d];) {
+          let n = 0;
+          for (x[v] = 0; x[v] < dims[v]; x[v]++) {
+            for (x[u] = 0; x[u] < dims[u]; x[u]++) {
+              const aPos = [x[0] + min[0], x[1] + min[1], x[2] + min[2]];
+              const bPos = [x[0] + q[0] + min[0], x[1] + q[1] + min[1], x[2] + q[2] + min[2]];
+              const a = x[d] >= 0 ? solid.get(`${aPos[0]},${aPos[1]},${aPos[2]}`) : null;
+              const b = x[d] < dims[d] - 1 ? solid.get(`${bPos[0]},${bPos[1]},${bPos[2]}`) : null;
+
+              if (!!a === !!b) mask[n++] = null;
+              else if (a) mask[n++] = { color: a, backFace: false };
+              else mask[n++] = { color: b, backFace: true };
+            }
+          }
+
+          x[d]++;
+          n = 0;
+
+          for (let j = 0; j < dims[v]; j++) {
+            for (let i = 0; i < dims[u];) {
+              const m = mask[n];
+              if (!m) { i++; n++; continue; }
+
+              let w = 1;
+              while (i + w < dims[u] && mask[n + w] && mask[n + w].color === m.color && mask[n + w].backFace === m.backFace) w++;
+
+              let h = 1;
+              let done = false;
+              while (j + h < dims[v] && !done) {
+                for (let k = 0; k < w; k++) {
+                  const next = mask[n + k + h * dims[u]];
+                  if (!next || next.color !== m.color || next.backFace !== m.backFace) { done = true; break; }
+                }
+                if (!done) h++;
+              }
+
+              const du = [0, 0, 0];
+              const dv = [0, 0, 0];
+              du[u] = w;
+              dv[v] = h;
+
+              const origin = [x[0], x[1], x[2]];
+              origin[u] = i;
+              origin[v] = j;
+              const worldOrigin = [origin[0] + min[0], origin[1] + min[1], origin[2] + min[2]];
+
+              const v0 = [worldOrigin[0], worldOrigin[1], worldOrigin[2]];
+              const v1 = [worldOrigin[0] + du[0], worldOrigin[1] + du[1], worldOrigin[2] + du[2]];
+              const v2 = [worldOrigin[0] + du[0] + dv[0], worldOrigin[1] + du[1] + dv[1], worldOrigin[2] + du[2] + dv[2]];
+              const v3 = [worldOrigin[0] + dv[0], worldOrigin[1] + dv[1], worldOrigin[2] + dv[2]];
+
+              faces.push({ color: m.color, verts: m.backFace ? [v0, v3, v2, v1] : [v0, v1, v2, v3] });
+
+              for (let l = 0; l < h; l++) for (let k = 0; k < w; k++) mask[n + k + l * dims[u]] = null;
+
+              i += w;
+              n += w;
+            }
+          }
+        }
+      }
+
+      return { faces, voxelSize };
+    }
+
+    function exportOBJ(useGreedy = false) {
       let obj = '# VoxForge OBJ Export\n# Generated by VoxForge Voxel Editor\n\n';
       let mtl = '# VoxForge MTL Export\n\n';
       const colorMap = new Map();
@@ -2694,58 +2802,91 @@
       obj += 'mtllib voxforge_export.mtl\n\n';
 
       // Geometry
-      voxels.forEach((v, key) => {
-        const s = v.size;
-        const pos = v.mesh.position.clone();
-        const px = pos.x - s * 0.5, py = pos.y - s * 0.5, pz = pos.z - s * 0.5;
+      if (useGreedy) {
+        try {
+          const { faces, voxelSize } = buildGreedyMeshFaces();
+          faces.forEach(f => {
+            f.verts.forEach(([x, y, z]) => obj += `v ${(x * voxelSize).toFixed(4)} ${(y * voxelSize).toFixed(4)} ${(z * voxelSize).toFixed(4)}\n`);
+            const o = vertOffset + 1;
+            obj += `usemtl ${colorMap.get(f.color)}\n`;
+            obj += `f ${o} ${o + 1} ${o + 2} ${o + 3}\n`;
+            vertOffset += 4;
+          });
+        } catch (err) {
+          notify('Greedy export failed: ' + err.message);
+          return;
+        }
+      } else {
+        voxels.forEach((v, key) => {
+          const s = v.size;
+          const pos = v.mesh.position.clone();
+          const px = pos.x - s * 0.5, py = pos.y - s * 0.5, pz = pos.z - s * 0.5;
 
-        // 8 vertices
-        const verts = [
-          [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
-          [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
-        ];
-        verts.forEach(([x, y, z]) => obj += `v ${x.toFixed(4)} ${y.toFixed(4)} ${z.toFixed(4)}\n`);
+          // 8 vertices
+          const verts = [
+            [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
+            [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
+          ];
+          verts.forEach(([x, y, z]) => obj += `v ${x.toFixed(4)} ${y.toFixed(4)} ${z.toFixed(4)}\n`);
 
-        const o = vertOffset + 1;
-        obj += `usemtl ${colorMap.get(v.color)}\n`;
-        obj += `f ${o} ${o + 1} ${o + 2} ${o + 3}\n`; // bottom
-        obj += `f ${o + 7} ${o + 6} ${o + 5} ${o + 4}\n`; // top
-        obj += `f ${o + 4} ${o + 5} ${o + 1} ${o}\n`; // front
-        obj += `f ${o + 5} ${o + 6} ${o + 2} ${o + 1}\n`; // right
-        obj += `f ${o + 6} ${o + 7} ${o + 3} ${o + 2}\n`; // back
-        obj += `f ${o + 7} ${o + 4} ${o} ${o + 3}\n`; // left
-        vertOffset += 8;
-      });
+          const o = vertOffset + 1;
+          obj += `usemtl ${colorMap.get(v.color)}\n`;
+          obj += `f ${o} ${o + 1} ${o + 2} ${o + 3}\n`; // bottom
+          obj += `f ${o + 7} ${o + 6} ${o + 5} ${o + 4}\n`; // top
+          obj += `f ${o + 4} ${o + 5} ${o + 1} ${o}\n`; // front
+          obj += `f ${o + 5} ${o + 6} ${o + 2} ${o + 1}\n`; // right
+          obj += `f ${o + 6} ${o + 7} ${o + 3} ${o + 2}\n`; // back
+          obj += `f ${o + 7} ${o + 4} ${o} ${o + 3}\n`; // left
+          vertOffset += 8;
+        });
+      }
 
       downloadText(obj, 'voxforge_export.obj');
       downloadText(mtl, 'voxforge_export.mtl');
-      notify('OBJ + MTL exported');
+      notify(useGreedy ? 'OBJ + MTL exported (greedy meshed)' : 'OBJ + MTL exported');
     }
 
-    function exportGLTF() {
+    function exportGLTF(useGreedy = false) {
       // Build a minimal valid glTF 2.0 JSON
       const meshes = []; const nodes = []; const accessors = [];
       const bufferViews = []; const positions = []; const indices = [];
       let bufferByteLength = 0;
 
-      voxels.forEach((v, key) => {
-        const s = v.size;
-        const p = v.mesh.position;
-        const px = p.x - s * 0.5, py = p.y - s * 0.5, pz = p.z - s * 0.5;
+      if (useGreedy) {
+        try {
+          const { faces, voxelSize } = buildGreedyMeshFaces();
+          faces.forEach(f => {
+            const r = parseInt(f.color.slice(1, 3), 16) / 255;
+            const g = parseInt(f.color.slice(3, 5), 16) / 255;
+            const b = parseInt(f.color.slice(5, 7), 16) / 255;
+            const verts = f.verts.map(([x, y, z]) => [x * voxelSize, y * voxelSize, z * voxelSize]);
+            const idx = [0, 1, 2, 0, 2, 3];
+            meshes.push({ vertices: verts, indices: idx, color: [r, g, b, 1.0] });
+          });
+        } catch (err) {
+          notify('Greedy export failed: ' + err.message);
+          return;
+        }
+      } else {
+        voxels.forEach((v, key) => {
+          const s = v.size;
+          const p = v.mesh.position;
+          const px = p.x - s * 0.5, py = p.y - s * 0.5, pz = p.z - s * 0.5;
 
-        const r = parseInt(v.color.slice(1, 3), 16) / 255;
-        const g = parseInt(v.color.slice(3, 5), 16) / 255;
-        const b = parseInt(v.color.slice(5, 7), 16) / 255;
+          const r = parseInt(v.color.slice(1, 3), 16) / 255;
+          const g = parseInt(v.color.slice(3, 5), 16) / 255;
+          const b = parseInt(v.color.slice(5, 7), 16) / 255;
 
-        const verts = [
-          [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
-          [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
-        ];
+          const verts = [
+            [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
+            [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
+          ];
 
-        const idx = [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0];
+          const idx = [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 7, 6, 0, 4, 5, 0, 5, 1, 1, 5, 6, 1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 4, 3, 4, 0];
 
-        meshes.push({ vertices: verts, indices: idx, color: [r, g, b, 1.0] });
-      });
+          meshes.push({ vertices: verts, indices: idx, color: [r, g, b, 1.0] });
+        });
+      }
 
       // Simple approach: single buffer, all voxels
       // Build Float32Array for positions, Uint16Array for indices
@@ -2820,7 +2961,7 @@
       };
 
       downloadJSON(gltf, 'voxforge_export.gltf');
-      notify('GLTF exported');
+      notify(useGreedy ? 'GLTF exported (greedy meshed)' : 'GLTF exported');
     }
 
     function arrayBufferToBase64(buffer) {
@@ -2830,33 +2971,49 @@
       return btoa(binary);
     }
 
-    function exportPLY() {
+    function exportPLY(useGreedy = false) {
       let verts = [], faces = [];
       let vOffset = 0;
-      voxels.forEach(v => {
-        const s = v.size;
-        const p = v.mesh.position;
-        const px = p.x - s * 0.5, py = p.y - s * 0.5, pz = p.z - s * 0.5;
-        const r = parseInt(v.color.slice(1, 3), 16), g = parseInt(v.color.slice(3, 5), 16), b = parseInt(v.color.slice(5, 7), 16);
-        const vs = [
-          [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
-          [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
-        ];
-        vs.forEach(([x, y, z]) => verts.push(`${x.toFixed(4)} ${y.toFixed(4)} ${z.toFixed(4)} ${r} ${g} ${b}`));
-        const o = vOffset;
-        [[o, o + 1, o + 2, o + 3], [o + 7, o + 6, o + 5, o + 4], [o, o + 4, o + 5, o + 1], [o + 1, o + 5, o + 6, o + 2], [o + 2, o + 6, o + 7, o + 3], [o + 3, o + 7, o + 4, o]].forEach(f => faces.push('4 ' + f.join(' ')));
-        vOffset += 8;
-      });
+      if (useGreedy) {
+        try {
+          const { faces: greedyFaces, voxelSize } = buildGreedyMeshFaces();
+          greedyFaces.forEach(f => {
+            const r = parseInt(f.color.slice(1, 3), 16), g = parseInt(f.color.slice(3, 5), 16), b = parseInt(f.color.slice(5, 7), 16);
+            const o = vOffset;
+            f.verts.forEach(([x, y, z]) => verts.push(`${(x * voxelSize).toFixed(4)} ${(y * voxelSize).toFixed(4)} ${(z * voxelSize).toFixed(4)} ${r} ${g} ${b}`));
+            faces.push('4 ' + [o, o + 1, o + 2, o + 3].join(' '));
+            vOffset += 4;
+          });
+        } catch (err) {
+          notify('Greedy export failed: ' + err.message);
+          return;
+        }
+      } else {
+        voxels.forEach(v => {
+          const s = v.size;
+          const p = v.mesh.position;
+          const px = p.x - s * 0.5, py = p.y - s * 0.5, pz = p.z - s * 0.5;
+          const r = parseInt(v.color.slice(1, 3), 16), g = parseInt(v.color.slice(3, 5), 16), b = parseInt(v.color.slice(5, 7), 16);
+          const vs = [
+            [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
+            [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
+          ];
+          vs.forEach(([x, y, z]) => verts.push(`${x.toFixed(4)} ${y.toFixed(4)} ${z.toFixed(4)} ${r} ${g} ${b}`));
+          const o = vOffset;
+          [[o, o + 1, o + 2, o + 3], [o + 7, o + 6, o + 5, o + 4], [o, o + 4, o + 5, o + 1], [o + 1, o + 5, o + 6, o + 2], [o + 2, o + 6, o + 7, o + 3], [o + 3, o + 7, o + 4, o]].forEach(f => faces.push('4 ' + f.join(' ')));
+          vOffset += 8;
+        });
+      }
       const ply = `ply\nformat ascii 1.0\ncomment VoxForge export\nelement vertex ${verts.length}\nproperty float x\nproperty float y\nproperty float z\nproperty uchar red\nproperty uchar green\nproperty uchar blue\nelement face ${faces.length}\nproperty list uchar int vertex_indices\nend_header\n${verts.join('\n')}\n${faces.join('\n')}\n`;
       downloadText(ply, 'voxforge_export.ply');
-      notify('PLY exported');
+      notify(useGreedy ? 'PLY exported (greedy meshed)' : 'PLY exported');
     }
 
-    function exportVOX() {
+    function exportVOX(useGreedy = false) {
       // Basic VOX file structure (MagicaVoxel compatible)
       // This is a simplified version
       notify('VOX export: use OBJ for best compatibility');
-      exportOBJ();
+      exportOBJ(useGreedy);
     }
 
     // ─── SAVE / LOAD ──────────────────────────────────────────
@@ -2965,10 +3122,10 @@
       else if (e.key === 'g' || e.key === 'G') toggleGrid();
       else if (e.key === 'w' || e.key === 'W') toggleWireframe();
       else if (e.key === 'r' || e.key === 'R') resetCamera();
-      else if (e.key === 'Escape') { deselectAll(); stopAnim(); }
-      else if (e.key === ' ') { e.preventDefault(); togglePlayPause(); }
-      else if (e.key === ',') prevKeyframe();
-      else if (e.key === '.') nextKeyframe();
+      else if (e.key === 'Escape') { deselectAll(); if (ANIMATION_ENABLED) stopAnim(); }
+      else if (ANIMATION_ENABLED && e.key === ' ') { e.preventDefault(); togglePlayPause(); }
+      else if (ANIMATION_ENABLED && e.key === ',') prevKeyframe();
+      else if (ANIMATION_ENABLED && e.key === '.') nextKeyframe();
     });
 
     // ─── RESIZE ───────────────────────────────────────────────
@@ -2993,7 +3150,7 @@
       lastFrameTime = timestamp;
 
       // Play animation
-      if (isPlaying && activeGroupId) {
+      if (ANIMATION_ENABLED && isPlaying && activeGroupId) {
         playTime += dt;
         if (playTime > animDuration) playTime = 0; // loop
         applyGroupTransform(activeGroupId, playTime);
@@ -3031,6 +3188,12 @@
     updateDuration();
     updateStats();
     document.getElementById('btn-grid').classList.add('active');
+    if (!ANIMATION_ENABLED) {
+      const animSection = document.getElementById('anim-section');
+      const timeline = document.getElementById('timeline');
+      if (animSection) animSection.style.display = 'none';
+      if (timeline) timeline.classList.remove('show');
+    }
 
     // Place a few starter voxels for demonstration
     function placeStarterScene() {
