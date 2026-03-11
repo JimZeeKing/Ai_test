@@ -2839,6 +2839,8 @@ d 1.0
 
       obj += 'mtllib voxforge_export.mtl\n\n';
 
+      const safeColorName = (color) => String(color || 'all').replace('#', '').toLowerCase();
+
       if (useGreedy) {
         try {
           const { faces, voxelSize } = buildGreedyMeshFaces(splitByColor);
@@ -2849,11 +2851,18 @@ d 1.0
           }, new Map()) : new Map([['all', faces]]);
 
           groups.forEach((partFaces, partKey) => {
-            obj += `o greedy_${String(partKey).replace('#', '')}\n`;
+            const firstFace = partFaces[0];
+            if (splitByColor && firstFace) {
+              obj += `o part_${safeColorName(partKey)}\n`;
+              obj += `g part_${safeColorName(partKey)}\n`;
+              obj += `usemtl ${colorMap.get(firstFace.color)}\n`;
+            } else {
+              obj += `o greedy_${safeColorName(partKey)}\n`;
+            }
             partFaces.forEach(f => {
               f.verts.forEach(([x, y, z]) => obj += `v ${(x * voxelSize * exportScale).toFixed(4)} ${(y * voxelSize * exportScale).toFixed(4)} ${(z * voxelSize * exportScale).toFixed(4)}\n`);
               const o = vertOffset + 1;
-              obj += `usemtl ${colorMap.get(f.color)}\n`;
+              if (!splitByColor) obj += `usemtl ${colorMap.get(f.color)}\n`;
               obj += `f ${o} ${o + 1} ${o + 2} ${o + 3}\n`;
               vertOffset += 4;
             });
@@ -2863,26 +2872,40 @@ d 1.0
           return;
         }
       } else {
+        const voxelGroups = splitByColor ? [...colorMap.keys()].map(color => [color, []]) : [['all', []]];
+        const groupMap = new Map(voxelGroups);
         voxels.forEach(v => {
-          const s = v.size;
-          const pos = v.mesh.position.clone();
-          const px = pos.x - s * 0.5, py = pos.y - s * 0.5, pz = pos.z - s * 0.5;
-          const verts = [
-            [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
-            [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
-          ];
-          verts.forEach(([x, y, z]) => obj += `v ${(x * exportScale).toFixed(4)} ${(y * exportScale).toFixed(4)} ${(z * exportScale).toFixed(4)}\n`);
+          const key = splitByColor ? v.color : 'all';
+          if (!groupMap.has(key)) groupMap.set(key, []);
+          groupMap.get(key).push(v);
+        });
 
-          const o = vertOffset + 1;
-          obj += `usemtl ${colorMap.get(v.color)}
-`;
-          obj += `f ${o + 3} ${o + 2} ${o + 1} ${o}\n`;
-          obj += `f ${o + 4} ${o + 5} ${o + 6} ${o + 7}\n`;
-          obj += `f ${o + 3} ${o} ${o + 4} ${o + 7}\n`;
-          obj += `f ${o + 1} ${o + 2} ${o + 6} ${o + 5}\n`;
-          obj += `f ${o} ${o + 1} ${o + 5} ${o + 4}\n`;
-          obj += `f ${o + 2} ${o + 3} ${o + 7} ${o + 6}\n`;
-          vertOffset += 8;
+        groupMap.forEach((groupVoxels, partKey) => {
+          if (groupVoxels.length === 0) return;
+          obj += `o part_${safeColorName(partKey)}\n`;
+          obj += `g part_${safeColorName(partKey)}\n`;
+          if (splitByColor) obj += `usemtl ${colorMap.get(partKey)}\n`;
+
+          groupVoxels.forEach(v => {
+            const s = v.size;
+            const pos = v.mesh.position.clone();
+            const px = pos.x - s * 0.5, py = pos.y - s * 0.5, pz = pos.z - s * 0.5;
+            const verts = [
+              [px, py, pz + s], [px + s, py, pz + s], [px + s, py, pz], [px, py, pz],
+              [px, py + s, pz + s], [px + s, py + s, pz + s], [px + s, py + s, pz], [px, py + s, pz]
+            ];
+            verts.forEach(([x, y, z]) => obj += `v ${(x * exportScale).toFixed(4)} ${(y * exportScale).toFixed(4)} ${(z * exportScale).toFixed(4)}\n`);
+
+            const o = vertOffset + 1;
+            if (!splitByColor) obj += `usemtl ${colorMap.get(v.color)}\n`;
+            obj += `f ${o + 3} ${o + 2} ${o + 1} ${o}\n`;
+            obj += `f ${o + 4} ${o + 5} ${o + 6} ${o + 7}\n`;
+            obj += `f ${o + 3} ${o} ${o + 4} ${o + 7}\n`;
+            obj += `f ${o + 1} ${o + 2} ${o + 6} ${o + 5}\n`;
+            obj += `f ${o} ${o + 1} ${o + 5} ${o + 4}\n`;
+            obj += `f ${o + 2} ${o + 3} ${o + 7} ${o + 6}\n`;
+            vertOffset += 8;
+          });
         });
       }
 
