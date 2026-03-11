@@ -941,6 +941,14 @@
         </div>
       </div>
 
+      <!-- WORLD SCALE -->
+      <div class="panel-section">
+        <div class="panel-title">World Scale</div>
+        <span class="small-label">Meters per voxel</span>
+        <input type="number" id="world-voxel-size" value="0.05" min="0.001" step="0.001" oninput="setWorldVoxelSize(this.value)">
+        <div style="font-size:8px;color:#666;margin-top:4px">Used for mesh bounding box measurement hints.</div>
+      </div>
+
       <!-- PAINT OPACITY -->
       <div class="panel-section">
         <div class="panel-title">Opacity</div>
@@ -1143,6 +1151,8 @@
     <span>|</span>
     <span>Voxels: <b id="st-voxels">0</b></span>
     <span>|</span>
+    <span>Mesh: <b id="st-mesh-size">0.00m × 0.00m × 0.00m</b></span>
+    <span>|</span>
     <span>Color: <b id="st-color">—</b></span>
     <span>|</span>
     <span>Size: <b id="st-size">1</b></span>
@@ -1268,6 +1278,7 @@
     let currentOpacity = 1.0;
     let wireframeMode = false;
     let gridVisible = true;
+    let worldVoxelSizeMeters = 0.05;
     let selectedVoxels = new Set(); // Set of keys "x,y,z"
     let activeGroupId = null;
     let gizmoMode = 'translate';
@@ -1400,6 +1411,14 @@
     function setOpacity(v) {
       currentOpacity = v / 100;
       document.getElementById('opacity-val').textContent = v + '%';
+    }
+
+    function setWorldVoxelSize(v) {
+      const parsed = Number(v);
+      if (!Number.isFinite(parsed)) return;
+      worldVoxelSizeMeters = Math.max(0.001, parsed);
+      document.getElementById('world-voxel-size').value = worldVoxelSizeMeters.toFixed(3);
+      updateStats();
     }
 
     function setSize(s) {
@@ -2854,7 +2873,31 @@
       document.getElementById('stat-groups').textContent = groups.size;
       document.getElementById('stat-selected').textContent = selectedVoxels.size;
       document.getElementById('st-voxels').textContent = count;
+      document.getElementById('st-mesh-size').textContent = getMeshSizeHint();
       renderGroupList();
+    }
+
+    function getMeshSizeHint() {
+      if (voxels.size === 0) return '0.00m × 0.00m × 0.00m';
+
+      let minX = Infinity, minY = Infinity, minZ = Infinity;
+      let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+
+      voxels.forEach(v => {
+        const half = v.size * 0.5;
+        const p = v.mesh.position;
+        minX = Math.min(minX, p.x - half);
+        minY = Math.min(minY, p.y - half);
+        minZ = Math.min(minZ, p.z - half);
+        maxX = Math.max(maxX, p.x + half);
+        maxY = Math.max(maxY, p.y + half);
+        maxZ = Math.max(maxZ, p.z + half);
+      });
+
+      const lengthM = (maxX - minX) * worldVoxelSizeMeters;
+      const widthM = (maxZ - minZ) * worldVoxelSizeMeters;
+      const heightM = (maxY - minY) * worldVoxelSizeMeters;
+      return `${lengthM.toFixed(2)}m × ${widthM.toFixed(2)}m × ${heightM.toFixed(2)}m`;
     }
 
     // ─── EXPORT ───────────────────────────────────────────────
