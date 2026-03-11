@@ -1605,6 +1605,21 @@
       applyGroupTransformFromValues(g, interpolateGroupTransform(g));
     }
 
+    function computeGroupPivotFromVoxelKeys(voxelKeys) {
+      if (!voxelKeys || voxelKeys.size === 0) return new THREE.Vector3(0, 0, 0);
+      let cx = 0, cy = 0, cz = 0, count = 0;
+      voxelKeys.forEach(k => {
+        const vd = voxels.get(k);
+        if (!vd) return;
+        cx += vd.mesh.position.x;
+        cy += vd.mesh.position.y;
+        cz += vd.mesh.position.z;
+        count++;
+      });
+      if (count === 0) return new THREE.Vector3(0, 0, 0);
+      return new THREE.Vector3(cx / count, cy / count, cz / count);
+    }
+
     // ─── GIZMO (Transform Handles) ────────────────────────────
     const gizmoGroup = new THREE.Group();
     gizmoGroup.visible = false;
@@ -2144,9 +2159,9 @@
       if (isPanning) {
         const right = new THREE.Vector3();
         const up = new THREE.Vector3();
-        camera.getWorldDirection(up);
-        right.crossVectors(up, camera.up).normalize();
-        up.crossVectors(right, new THREE.Vector3(0, 1, 0)).normalize();
+        camera.matrixWorld.extractBasis(right, up, new THREE.Vector3());
+        right.normalize();
+        up.normalize();
         const panSpeed = camRadius * 0.001;
         camTarget.addScaledVector(right, -dx * panSpeed);
         camTarget.addScaledVector(up, -dy * panSpeed);
@@ -2947,7 +2962,8 @@ d 1.0
           id, name: g.name, color: g.color,
           voxelKeys: [...g.voxelKeys],
           visible: g.visible !== false,
-          transform: g.transform
+          transform: g.transform,
+          pivot: g.pivot ? { x: g.pivot.x, y: g.pivot.y, z: g.pivot.z } : null
         });
       });
       downloadJSON(data, 'voxforge_project.voxforge');
@@ -2977,7 +2993,11 @@ d 1.0
               scene.add(group3d);
               const groupVisible = gd.visible !== false;
               group3d.visible = groupVisible;
-              groups.set(gd.id, { name: gd.name, voxelKeys, color: gd.color, group3d, transform: gd.transform || { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, scl: { x: 1, y: 1, z: 1 } }, origPositions: new Map(), visible: groupVisible, pivot: new THREE.Vector3(0, 0, 0) });
+              const pivot = (gd.pivot && Number.isFinite(gd.pivot.x) && Number.isFinite(gd.pivot.y) && Number.isFinite(gd.pivot.z))
+                ? new THREE.Vector3(gd.pivot.x, gd.pivot.y, gd.pivot.z)
+                : computeGroupPivotFromVoxelKeys(voxelKeys);
+              groups.set(gd.id, { name: gd.name, voxelKeys, color: gd.color, group3d, transform: gd.transform || { pos: { x: 0, y: 0, z: 0 }, rot: { x: 0, y: 0, z: 0 }, scl: { x: 1, y: 1, z: 1 } }, origPositions: new Map(), visible: groupVisible, pivot });
+              applyGroupTransform(gd.id);
               groupCounter = Math.max(groupCounter, parseInt(gd.id.replace('grp_', '')) || 0);
             });
           }
