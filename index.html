@@ -871,6 +871,26 @@
           Layer</button>
         <button class="sel-op-btn" onclick="invertSelection()" title="Invert current selection">⇄ Invert
           Selection</button>
+        <div style="margin-top:6px;padding-top:6px;border-top:1px solid #1e1e28">
+          <div class="panel-title" style="font-size:7px;color:#f6a82a88;margin-bottom:4px">Voxel QOL</div>
+          <button class="sel-op-btn" onclick="mirrorSelection('x')" title="Mirror selection across X axis">⇋ Mirror X</button>
+          <button class="sel-op-btn" onclick="mirrorSelection('y')" title="Mirror selection across Y axis">⇵ Mirror Y</button>
+          <button class="sel-op-btn" onclick="mirrorSelection('z')" title="Mirror selection across Z axis">⥮ Mirror Z</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:4px 0">
+            <input type="number" id="array-count" value="3" min="2" max="24" title="Array copies">
+            <select id="array-axis" title="Array axis">
+              <option value="x">Axis X</option>
+              <option value="y">Axis Y</option>
+              <option value="z">Axis Z</option>
+            </select>
+          </div>
+          <button class="sel-op-btn" onclick="arraySelection()" title="Create offset copies from selection">⧉ Array Copies</button>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;margin:4px 0">
+            <input type="number" id="scatter-count" value="12" min="1" max="500" title="Scatter copies">
+            <input type="number" id="scatter-radius" value="6" min="1" max="64" title="Scatter radius">
+          </div>
+          <button class="sel-op-btn" onclick="scatterSelection()" title="Scatter randomized copies around selection">✶ Scatter Copies</button>
+        </div>
         <div style="margin-top:4px;padding-top:4px;border-top:1px solid #1e1e28">
           <span class="small-label" style="color:#f6a82a88">Box Select: drag on empty space</span>
           <div style="display:flex;gap:3px;margin-top:3px">
@@ -2206,6 +2226,119 @@
       newSel.forEach(k => selectedVoxels.add(k));
       notify(`Inverted: ${selectedVoxels.size} selected`);
       updateStats(); updateSelInfo();
+    }
+
+    function getSelectedVoxelData() {
+      return [...selectedVoxels].map(k => {
+        const vd = voxels.get(k);
+        if (!vd) return null;
+        return {
+          key: k,
+          x: vd.mesh.userData.x,
+          y: vd.mesh.userData.y,
+          z: vd.mesh.userData.z,
+          color: vd.color,
+          size: vd.size,
+          opacity: vd.opacity
+        };
+      }).filter(Boolean);
+    }
+
+    function addVoxelBatch(records, message) {
+      if (!records.length) { notify('No voxel operations generated'); return; }
+      records.forEach(v => placeVoxel(v.x, v.y, v.z, v.color, v.size, v.opacity, true));
+      executeCommand({
+        execute() { records.forEach(v => placeVoxel(v.x, v.y, v.z, v.color, v.size, v.opacity, true)); },
+        undo() { records.forEach(v => removeVoxelAt(v.x, v.y, v.z, true)); }
+      });
+      deselectAll();
+      records.forEach(v => {
+        const k = voxelKey(v.x, v.y, v.z);
+        if (voxels.has(k)) { selectedVoxels.add(k); addOutline(k); }
+      });
+      updateStats();
+      updateSelInfo();
+      notify(message || `Added ${records.length} voxels`);
+    }
+
+    function mirrorSelection(axis) {
+      const src = getSelectedVoxelData();
+      if (!src.length) { notify('Select voxels first'); return; }
+      const idx = axis === 'x' ? 0 : axis === 'y' ? 1 : 2;
+      const min = [Infinity, Infinity, Infinity];
+      const max = [-Infinity, -Infinity, -Infinity];
+      src.forEach(v => {
+        min[0] = Math.min(min[0], v.x); min[1] = Math.min(min[1], v.y); min[2] = Math.min(min[2], v.z);
+        max[0] = Math.max(max[0], v.x); max[1] = Math.max(max[1], v.y); max[2] = Math.max(max[2], v.z);
+      });
+      const pivot = (min[idx] + max[idx]) * 0.5;
+      const out = [];
+      const seen = new Set();
+      src.forEach(v => {
+        const c = { x: v.x, y: v.y, z: v.z, color: v.color, size: v.size, opacity: v.opacity };
+        const mirrored = Math.round((pivot * 2 - c[axis]) / v.size) * v.size;
+        c[axis] = mirrored;
+        const k = voxelKey(c.x, c.y, c.z);
+        if (!voxels.has(k) && !seen.has(k)) { seen.add(k); out.push(c); }
+      });
+      addVoxelBatch(out, `Mirrored ${out.length} voxels on ${axis.toUpperCase()} axis`);
+    }
+
+    function arraySelection() {
+      const src = getSelectedVoxelData();
+      if (!src.length) { notify('Select voxels first'); return; }
+      const count = Math.max(2, Math.min(24, +(document.getElementById('array-count')?.value || 3) | 0));
+      const axis = (document.getElementById('array-axis')?.value || 'x');
+      const min = { x: Infinity, y: Infinity, z: Infinity };
+      const max = { x: -Infinity, y: -Infinity, z: -Infinity };
+      src.forEach(v => {
+        min.x = Math.min(min.x, v.x); min.y = Math.min(min.y, v.y); min.z = Math.min(min.z, v.z);
+        max.x = Math.max(max.x, v.x + v.size); max.y = Math.max(max.y, v.y + v.size); max.z = Math.max(max.z, v.z + v.size);
+      });
+      const span = Math.max(1, max[axis] - min[axis]);
+      const out = [];
+      const seen = new Set();
+      for (let i = 1; i <= count; i++) {
+        src.forEach(v => {
+          const c = { x: v.x, y: v.y, z: v.z, color: v.color, size: v.size, opacity: v.opacity };
+          c[axis] = c[axis] + span * i;
+          const k = voxelKey(c.x, c.y, c.z);
+          if (!voxels.has(k) && !seen.has(k)) { seen.add(k); out.push(c); }
+        });
+      }
+      addVoxelBatch(out, `Array created: ${count} steps on ${axis.toUpperCase()} axis`);
+    }
+
+    function scatterSelection() {
+      const src = getSelectedVoxelData();
+      if (!src.length) { notify('Select voxels first'); return; }
+      const count = Math.max(1, Math.min(500, +(document.getElementById('scatter-count')?.value || 12) | 0));
+      const radius = Math.max(1, Math.min(64, +(document.getElementById('scatter-radius')?.value || 6)));
+      let cx = 0, cy = 0, cz = 0;
+      src.forEach(v => { cx += v.x; cy += v.y; cz += v.z; });
+      cx /= src.length; cy /= src.length; cz /= src.length;
+      const out = [];
+      const seen = new Set();
+      for (let i = 0; i < count; i++) {
+        const base = src[i % src.length];
+        let tries = 0;
+        while (tries < 20) {
+          tries++;
+          const dx = (Math.random() * 2 - 1) * radius;
+          const dy = (Math.random() * 2 - 1) * Math.max(1, radius * 0.5);
+          const dz = (Math.random() * 2 - 1) * radius;
+          const x = snapToGrid(cx + dx, base.size);
+          const y = Math.max(0, snapToGrid(cy + dy, base.size));
+          const z = snapToGrid(cz + dz, base.size);
+          const k = voxelKey(x, y, z);
+          if (!voxels.has(k) && !seen.has(k)) {
+            seen.add(k);
+            out.push({ x, y, z, color: base.color, size: base.size, opacity: base.opacity });
+            break;
+          }
+        }
+      }
+      addVoxelBatch(out, `Scattered ${out.length} voxels in radius ${radius}`);
     }
 
     // ─── BOX SELECT ───────────────────────────────────────────
