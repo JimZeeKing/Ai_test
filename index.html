@@ -2966,11 +2966,51 @@ d 1.0
         primitives.forEach((primitive) => {
           const flatPos = [];
           primitive.vertices.forEach(v => flatPos.push(v[0], v[1], v[2]));
+          const normalSums = new Float32Array(primitive.vertices.length * 3);
+
+          for (let i = 0; i < primitive.indices.length; i += 3) {
+            const ia = primitive.indices[i];
+            const ib = primitive.indices[i + 1];
+            const ic = primitive.indices[i + 2];
+
+            const ax = flatPos[ia * 3], ay = flatPos[ia * 3 + 1], az = flatPos[ia * 3 + 2];
+            const bx = flatPos[ib * 3], by = flatPos[ib * 3 + 1], bz = flatPos[ib * 3 + 2];
+            const cx = flatPos[ic * 3], cy = flatPos[ic * 3 + 1], cz = flatPos[ic * 3 + 2];
+
+            const abx = bx - ax, aby = by - ay, abz = bz - az;
+            const acx = cx - ax, acy = cy - ay, acz = cz - az;
+
+            const nx = aby * acz - abz * acy;
+            const ny = abz * acx - abx * acz;
+            const nz = abx * acy - aby * acx;
+
+            normalSums[ia * 3] += nx; normalSums[ia * 3 + 1] += ny; normalSums[ia * 3 + 2] += nz;
+            normalSums[ib * 3] += nx; normalSums[ib * 3 + 1] += ny; normalSums[ib * 3 + 2] += nz;
+            normalSums[ic * 3] += nx; normalSums[ic * 3 + 1] += ny; normalSums[ic * 3 + 2] += nz;
+          }
+
+          const normalArray = new Float32Array(primitive.vertices.length * 3);
+          for (let i = 0; i < primitive.vertices.length; i++) {
+            const x = normalSums[i * 3];
+            const y = normalSums[i * 3 + 1];
+            const z = normalSums[i * 3 + 2];
+            const len = Math.hypot(x, y, z);
+            if (len > 1e-8) {
+              normalArray[i * 3] = x / len;
+              normalArray[i * 3 + 1] = y / len;
+              normalArray[i * 3 + 2] = z / len;
+            } else {
+              normalArray[i * 3] = 0;
+              normalArray[i * 3 + 1] = 1;
+              normalArray[i * 3 + 2] = 0;
+            }
+          }
 
           const maxIndex = Math.max(...primitive.indices);
           const useUint32 = maxIndex > 65535;
           const indexArray = useUint32 ? new Uint32Array(primitive.indices) : new Uint16Array(primitive.indices);
           const posArray = new Float32Array(flatPos);
+          const nrmArray = normalArray;
           const colorArray = useVertexColor ? new Float32Array(primitive.vertices.length * 4) : null;
           if (colorArray) {
             for (let i = 0; i < primitive.vertices.length; i++) colorArray.set(primitive.color, i * 4);
@@ -2994,6 +3034,12 @@ d 1.0
           byteOffset += posArray.byteLength;
 
           align4();
+          const nrmView = bufferViews.length;
+          bufferViews.push({ buffer: 0, byteOffset, byteLength: nrmArray.byteLength, target: 34962 });
+          binaryChunks.push(new Uint8Array(nrmArray.buffer));
+          byteOffset += nrmArray.byteLength;
+
+          align4();
           const idxView = bufferViews.length;
           bufferViews.push({ buffer: 0, byteOffset, byteLength: indexArray.byteLength, target: 34963 });
           binaryChunks.push(new Uint8Array(indexArray.buffer));
@@ -3001,6 +3047,9 @@ d 1.0
 
           const posAccessor = accessors.length;
           accessors.push({ bufferView: posView, componentType: 5126, count: primitive.vertices.length, type: 'VEC3', min, max });
+
+          const nrmAccessor = accessors.length;
+          accessors.push({ bufferView: nrmView, componentType: 5126, count: primitive.vertices.length, type: 'VEC3' });
 
           let colorAccessor = null;
           if (colorArray) {
@@ -3028,7 +3077,7 @@ d 1.0
             materialIndexByColor.set(colorKey, materialIndex);
           }
 
-          const attributes = { POSITION: posAccessor };
+          const attributes = { POSITION: posAccessor, NORMAL: nrmAccessor };
           if (colorAccessor !== null) attributes.COLOR_0 = colorAccessor;
           gltfPrimitives.push({ attributes, indices: idxAccessor, material: useVertexColor ? 0 : materialIndex });
         });
