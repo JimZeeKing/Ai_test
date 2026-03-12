@@ -1046,6 +1046,7 @@
     const ghostMesh = new THREE.Mesh(ghostGeo, ghostMat);
     ghostMesh.visible = false;
     scene.add(ghostMesh);
+    const mirrorGhostMeshes = [];
 
     // Ghost outline
     const ghostEdgeMat = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.5 });
@@ -1239,11 +1240,49 @@
 
     function updateGhostColor() {
       ghostMat.color.set(currentColor);
+      mirrorGhostMeshes.forEach(mg => mg.material.color.set(currentColor));
     }
     function updateGhostSize() {
       const s = currentSize;
       ghostGeo.dispose && null; // can't resize easily, just rebuild
       ghostMesh.scale.set(s, s, s);
+      mirrorGhostMeshes.forEach(mg => mg.scale.set(s, s, s));
+    }
+
+    function ensureMirrorGhostCount(count) {
+      while (mirrorGhostMeshes.length < count) {
+        const mg = new THREE.Mesh(ghostGeo, ghostMat.clone());
+        mg.visible = false;
+        scene.add(mg);
+        mirrorGhostMeshes.push(mg);
+      }
+      for (let i = count; i < mirrorGhostMeshes.length; i++) {
+        mirrorGhostMeshes[i].visible = false;
+      }
+    }
+
+    function hideAllGhosts() {
+      ghostMesh.visible = false;
+      mirrorGhostMeshes.forEach(mg => { mg.visible = false; });
+    }
+
+    function updateGhostPreview(x, y, z) {
+      const s = currentSize;
+      const placements = getDrawMirrorPlacements(x, y, z, s);
+      const primaryPlacement = placements[0] || { x, y, z };
+      ghostMesh.scale.set(s, s, s);
+      ghostMesh.position.set(primaryPlacement.x + s * 0.5, primaryPlacement.y + s * 0.5, primaryPlacement.z + s * 0.5);
+      ghostMat.color.set(currentColor);
+      ghostMesh.visible = true;
+
+      const mirrorPlacements = placements.slice(1);
+      ensureMirrorGhostCount(mirrorPlacements.length);
+      mirrorPlacements.forEach((p, i) => {
+        const mg = mirrorGhostMeshes[i];
+        mg.scale.set(s, s, s);
+        mg.position.set(p.x + s * 0.5, p.y + s * 0.5, p.z + s * 0.5);
+        mg.visible = true;
+      });
     }
 
     // ─── VOXEL CREATION / REMOVAL ─────────────────────────────
@@ -2293,16 +2332,12 @@
         const hit = getIntersects(e);
         if (hit && (hit.type === 'voxel' || hit.type === 'ground')) {
           const pos = hit.type === 'voxel' ? getPlacePosition(hit.hit) : getGroundPlacePosition(hit.hit);
-          const s = currentSize;
-          ghostMesh.scale.set(s, s, s);
-          ghostMesh.position.set(pos.x + s * 0.5, pos.y + s * 0.5, pos.z + s * 0.5);
-          ghostMat.color.set(currentColor);
-          ghostMesh.visible = true;
+          updateGhostPreview(pos.x, pos.y, pos.z);
         } else {
-          ghostMesh.visible = false;
+          hideAllGhosts();
         }
       } else {
-        ghostMesh.visible = false;
+        hideAllGhosts();
       }
 
       // Paint on drag
@@ -2406,7 +2441,7 @@
       updateCamera();
     }, { passive: false });
 
-    canvas.addEventListener('mouseleave', () => { ghostMesh.visible = false; });
+    canvas.addEventListener('mouseleave', () => { hideAllGhosts(); });
 
     // ─── GIZMO DRAG HANDLER ───────────────────────────────────
     function handleGizmoDrag(e, dx, dy) {
@@ -2491,7 +2526,7 @@
         select: 'Click voxel or drag empty space to box-select'
       }[tool];
       canvas.style.cursor = { add: 'crosshair', remove: 'not-allowed', paint: 'cell', select: 'pointer' }[tool];
-      ghostMesh.visible = false;
+      hideAllGhosts();
       // Show selection options only in select mode
       const selPanel = document.getElementById('sel-options-panel');
       if (selPanel) selPanel.classList.toggle('show', tool === 'select');
@@ -3257,21 +3292,49 @@ d 1.0
     updateStats();
     document.getElementById('btn-grid').classList.add('active');
 
-    // Place a few starter voxels for demonstration
+    // Place a default voxel chair scene
     function placeStarterScene() {
-      // Simple platform
-      for (let x = -3; x <= 3; x++) for (let z = -3; z <= 3; z++) {
-        placeVoxel(x, -1, z, '#78c840', 1, 1, true);
+      const seatColor = '#8d6e63';
+      const legColor = '#5d4037';
+      const backColor = '#a1887f';
+      const accentColor = '#d7ccc8';
+
+      // Seat
+      for (let x = -1; x <= 1; x++) {
+        for (let z = -1; z <= 1; z++) {
+          placeVoxel(x, 0, z, seatColor, 1, 1, true);
+        }
       }
-      // A small structure
-      placeVoxel(0, 0, 0, '#3880e0', 1, 1, true);
-      placeVoxel(1, 0, 0, '#3880e0', 1, 1, true);
-      placeVoxel(0, 0, 1, '#3880e0', 1, 1, true);
-      placeVoxel(1, 0, 1, '#3880e0', 1, 1, true);
-      placeVoxel(0, 1, 0, '#e05050', 1, 1, true);
-      placeVoxel(1, 1, 0, '#e05050', 1, 1, true);
-      placeVoxel(0, 1, 1, '#e05050', 1, 1, true);
-      placeVoxel(1, 1, 1, '#e05050', 1, 1, true);
+
+      // Legs
+      const legPositions = [
+        { x: -1, z: -1 },
+        { x: -1, z: 1 },
+        { x: 1, z: -1 },
+        { x: 1, z: 1 },
+      ];
+      legPositions.forEach(({ x, z }) => {
+        placeVoxel(x, -1, z, legColor, 1, 1, true);
+        placeVoxel(x, -2, z, legColor, 1, 1, true);
+      });
+
+      // Backrest uprights
+      for (let y = 1; y <= 3; y++) {
+        placeVoxel(-1, y, 1, backColor, 1, 1, true);
+        placeVoxel(1, y, 1, backColor, 1, 1, true);
+      }
+
+      // Backrest slats
+      for (let x = -1; x <= 1; x++) {
+        placeVoxel(x, 2, 1, accentColor, 1, 1, true);
+        placeVoxel(x, 3, 1, accentColor, 1, 1, true);
+      }
+
+      // Optional support beam
+      for (let x = -1; x <= 1; x++) {
+        placeVoxel(x, -1, 0, legColor, 1, 1, true);
+      }
+
       // Clear history so starter scene isn't undoable
       history.length = 0; historyIndex = -1;
       updateStats();
