@@ -2797,7 +2797,9 @@
       const colorMap = new Map();
       let matIndex = 0;
       let vertOffset = 0;
+      let normalOffset = 0;
       const useVertexColor = colorMode === 'vertex';
+      const uvIndices = [1, 2, 3, 4];
 
       const hexToRGB = (color) => [
         parseInt(color.slice(1, 3), 16) / 255,
@@ -2831,6 +2833,21 @@ d 1.0
       });
 
       if (!useVertexColor) obj += 'mtllib voxforge_export.mtl\n\n';
+      obj += 'vt 0.0000 0.0000\n';
+      obj += 'vt 1.0000 0.0000\n';
+      obj += 'vt 1.0000 1.0000\n';
+      obj += 'vt 0.0000 1.0000\n\n';
+
+      const appendNormal = (nx, ny, nz) => {
+        const len = Math.hypot(nx, ny, nz) || 1;
+        obj += `vn ${(nx / len).toFixed(4)} ${(ny / len).toFixed(4)} ${(nz / len).toFixed(4)}\n`;
+        normalOffset += 1;
+        return normalOffset;
+      };
+
+      const appendFaceWithUvNormal = (vertexIndices, normalIndex) => {
+        obj += `f ${vertexIndices[0]}/${uvIndices[0]}/${normalIndex} ${vertexIndices[1]}/${uvIndices[1]}/${normalIndex} ${vertexIndices[2]}/${uvIndices[2]}/${normalIndex} ${vertexIndices[3]}/${uvIndices[3]}/${normalIndex}\n`;
+      };
 
       const safeColorName = (color) => String(color || 'all').replace('#', '').toLowerCase();
 
@@ -2856,8 +2873,16 @@ d 1.0
               f.verts.forEach(([x, y, z]) => appendVertex(x * voxelSize * exportScale, y * voxelSize * exportScale, z * voxelSize * exportScale, f.color));
               const o = vertOffset + 1;
               const faceMaterial = splitByColor ? (colorMap.get(partKey) || colorMap.get(firstFace.color)) : colorMap.get(f.color);
+              const [a, b, c] = f.verts;
+              const abx = b[0] - a[0], aby = b[1] - a[1], abz = b[2] - a[2];
+              const acx = c[0] - a[0], acy = c[1] - a[1], acz = c[2] - a[2];
+              const ni = appendNormal(
+                aby * acz - abz * acy,
+                abz * acx - abx * acz,
+                abx * acy - aby * acx
+              );
               if (!useVertexColor) obj += `usemtl ${faceMaterial}\n`;
-              obj += `f ${o} ${o + 1} ${o + 2} ${o + 3}\n`;
+              appendFaceWithUvNormal([o, o + 1, o + 2, o + 3], ni);
               vertOffset += 4;
             });
           });
@@ -2887,12 +2912,18 @@ d 1.0
             const o = vertOffset + 1;
             const voxelMaterial = splitByColor ? colorMap.get(partKey) : colorMap.get(v.color);
             if (!useVertexColor) obj += `usemtl ${voxelMaterial}\n`;
-            obj += `f ${o + 3} ${o + 2} ${o + 1} ${o}\n`;
-            obj += `f ${o + 4} ${o + 5} ${o + 6} ${o + 7}\n`;
-            obj += `f ${o + 3} ${o} ${o + 4} ${o + 7}\n`;
-            obj += `f ${o + 1} ${o + 2} ${o + 6} ${o + 5}\n`;
-            obj += `f ${o} ${o + 1} ${o + 5} ${o + 4}\n`;
-            obj += `f ${o + 2} ${o + 3} ${o + 7} ${o + 6}\n`;
+            const niBottom = appendNormal(0, -1, 0);
+            const niTop = appendNormal(0, 1, 0);
+            const niLeft = appendNormal(-1, 0, 0);
+            const niRight = appendNormal(1, 0, 0);
+            const niFront = appendNormal(0, 0, 1);
+            const niBack = appendNormal(0, 0, -1);
+            appendFaceWithUvNormal([o + 3, o + 2, o + 1, o], niBottom);
+            appendFaceWithUvNormal([o + 4, o + 5, o + 6, o + 7], niTop);
+            appendFaceWithUvNormal([o + 3, o, o + 4, o + 7], niLeft);
+            appendFaceWithUvNormal([o + 1, o + 2, o + 6, o + 5], niRight);
+            appendFaceWithUvNormal([o, o + 1, o + 5, o + 4], niFront);
+            appendFaceWithUvNormal([o + 2, o + 3, o + 7, o + 6], niBack);
             vertOffset += 8;
           });
         });
@@ -3011,6 +3042,7 @@ d 1.0
           const indexArray = useUint32 ? new Uint32Array(primitive.indices) : new Uint16Array(primitive.indices);
           const posArray = new Float32Array(flatPos);
           const nrmArray = normalArray;
+          const uvArray = new Float32Array(primitive.vertices.length * 2);
           const colorArray = useVertexColor ? new Float32Array(primitive.vertices.length * 4) : null;
           if (colorArray) {
             for (let i = 0; i < primitive.vertices.length; i++) colorArray.set(primitive.color, i * 4);
@@ -3027,6 +3059,34 @@ d 1.0
             max[2] = Math.max(max[2], flatPos[i + 2]);
           }
 
+          const sizeX = Math.max(1e-8, max[0] - min[0]);
+          const sizeY = Math.max(1e-8, max[1] - min[1]);
+          const sizeZ = Math.max(1e-8, max[2] - min[2]);
+          for (let i = 0; i < primitive.vertices.length; i++) {
+            const px = flatPos[i * 3];
+            const py = flatPos[i * 3 + 1];
+            const pz = flatPos[i * 3 + 2];
+            const nx = Math.abs(nrmArray[i * 3]);
+            const ny = Math.abs(nrmArray[i * 3 + 1]);
+            const nz = Math.abs(nrmArray[i * 3 + 2]);
+
+            let u = 0;
+            let v = 0;
+            if (nx >= ny && nx >= nz) {
+              u = (pz - min[2]) / sizeZ;
+              v = (py - min[1]) / sizeY;
+            } else if (ny >= nx && ny >= nz) {
+              u = (px - min[0]) / sizeX;
+              v = (pz - min[2]) / sizeZ;
+            } else {
+              u = (px - min[0]) / sizeX;
+              v = (py - min[1]) / sizeY;
+            }
+
+            uvArray[i * 2] = u;
+            uvArray[i * 2 + 1] = v;
+          }
+
           align4();
           const posView = bufferViews.length;
           bufferViews.push({ buffer: 0, byteOffset, byteLength: posArray.byteLength, target: 34962 });
@@ -3040,6 +3100,12 @@ d 1.0
           byteOffset += nrmArray.byteLength;
 
           align4();
+          const uvView = bufferViews.length;
+          bufferViews.push({ buffer: 0, byteOffset, byteLength: uvArray.byteLength, target: 34962 });
+          binaryChunks.push(new Uint8Array(uvArray.buffer));
+          byteOffset += uvArray.byteLength;
+
+          align4();
           const idxView = bufferViews.length;
           bufferViews.push({ buffer: 0, byteOffset, byteLength: indexArray.byteLength, target: 34963 });
           binaryChunks.push(new Uint8Array(indexArray.buffer));
@@ -3050,6 +3116,9 @@ d 1.0
 
           const nrmAccessor = accessors.length;
           accessors.push({ bufferView: nrmView, componentType: 5126, count: primitive.vertices.length, type: 'VEC3' });
+
+          const uvAccessor = accessors.length;
+          accessors.push({ bufferView: uvView, componentType: 5126, count: primitive.vertices.length, type: 'VEC2' });
 
           let colorAccessor = null;
           if (colorArray) {
@@ -3077,7 +3146,7 @@ d 1.0
             materialIndexByColor.set(colorKey, materialIndex);
           }
 
-          const attributes = { POSITION: posAccessor, NORMAL: nrmAccessor };
+          const attributes = { POSITION: posAccessor, NORMAL: nrmAccessor, TEXCOORD_0: uvAccessor };
           if (colorAccessor !== null) attributes.COLOR_0 = colorAccessor;
           gltfPrimitives.push({ attributes, indices: idxAccessor, material: useVertexColor ? 0 : materialIndex });
         });
