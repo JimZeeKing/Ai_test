@@ -892,15 +892,32 @@
                 style="font-size:8px">Scale</button>
             </div>
           </div>
+          <div style="margin-top:6px">
+            <span class="small-label">Gizmo Space</span>
+            <div class="gizmo-space-btns" style="display:flex;gap:3px">
+              <button class="size-btn active" id="gizmo-space-world" onclick="setGizmoSpace('world')"
+                style="font-size:8px">World</button>
+              <button class="size-btn" id="gizmo-space-local" onclick="setGizmoSpace('local')"
+                style="font-size:8px">Local</button>
+            </div>
+          </div>
           <!-- Pivot -->
           <div style="margin-top:8px;padding-top:8px;border-top:1px solid #1e1e28">
             <span class="small-label">Pivot Point</span>
-            <div style="display:flex;gap:3px;margin-bottom:4px">
-              <button class="size-btn active" id="pivot-center" onclick="setPivotPreset('center')" style="font-size:8px"
-                title="Center of bounding box">Center</button>
+            <div class="pivot-preset-btns" style="display:grid;grid-template-columns:repeat(3,1fr);gap:3px;margin-bottom:4px">
+              <button class="size-btn" id="pivot-top" onclick="setPivotPreset('top')" style="font-size:8px"
+                title="Top center">Top</button>
+              <button class="size-btn" id="pivot-middle" onclick="setPivotPreset('middle')" style="font-size:8px"
+                title="Middle center">Middle</button>
               <button class="size-btn" id="pivot-bottom" onclick="setPivotPreset('bottom')" style="font-size:8px"
                 title="Bottom center">Bottom</button>
-              <button class="size-btn" id="pivot-origin" onclick="setPivotPreset('origin')" style="font-size:8px"
+              <button class="size-btn" id="pivot-left" onclick="setPivotPreset('left')" style="font-size:8px"
+                title="Left center">Left</button>
+              <button class="size-btn active" id="pivot-center" onclick="setPivotPreset('center')" style="font-size:8px"
+                title="Center">Center</button>
+              <button class="size-btn" id="pivot-right" onclick="setPivotPreset('right')" style="font-size:8px"
+                title="Right center">Right</button>
+              <button class="size-btn" id="pivot-origin" onclick="setPivotPreset('origin')" style="font-size:8px;grid-column:1 / span 3"
                 title="World origin 0,0,0">Origin</button>
             </div>
             <div class="prop-row"><label style="width:14px;color:#e05050">X</label><input type="number" id="piv-x"
@@ -1077,6 +1094,7 @@
     let selectedVoxels = new Set(); // Set of keys "x,y,z"
     let activeGroupId = null;
     let gizmoMode = 'translate';
+    let gizmoSpace = 'world';
     const drawMirrorAxes = new Set();
 
     // Main voxel store: key "x,y,z" -> { mesh, color, size, opacity }
@@ -1489,7 +1507,7 @@
         const g = groups.get(id);
         document.getElementById('anim-name').value = g.name;
         if (!g.pivot) g.pivot = new THREE.Vector3(0, 0, 0);
-        syncPivotUI(g);
+        syncPivotUI(g, null);
         pivotMarker.visible = true;
         syncKFInputsFromGroup(g);
         applyGroupTransform(id);
@@ -1620,6 +1638,92 @@
       return new THREE.Vector3(cx / count, cy / count, cz / count);
     }
 
+    function computeGroupBounds(voxelKeys) {
+      let minX = Infinity, minY = Infinity, minZ = Infinity;
+      let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+      let found = false;
+      voxelKeys.forEach(k => {
+        const vd = voxels.get(k);
+        if (!vd) return;
+        const x0 = vd.mesh.position.x;
+        const y0 = vd.mesh.position.y;
+        const z0 = vd.mesh.position.z;
+        const x1 = x0 + vd.size;
+        const y1 = y0 + vd.size;
+        const z1 = z0 + vd.size;
+        minX = Math.min(minX, x0); minY = Math.min(minY, y0); minZ = Math.min(minZ, z0);
+        maxX = Math.max(maxX, x1); maxY = Math.max(maxY, y1); maxZ = Math.max(maxZ, z1);
+        found = true;
+      });
+      if (!found) return null;
+      return { minX, minY, minZ, maxX, maxY, maxZ };
+    }
+
+    function syncPivotUI(g, activePreset = null) {
+      if (!g || !g.pivot) return;
+      document.getElementById('piv-x').value = g.pivot.x.toFixed(2);
+      document.getElementById('piv-y').value = g.pivot.y.toFixed(2);
+      document.getElementById('piv-z').value = g.pivot.z.toFixed(2);
+      const presets = ['top', 'middle', 'bottom', 'left', 'center', 'right', 'origin'];
+      presets.forEach(p => {
+        const btn = document.getElementById('pivot-' + p);
+        if (btn) btn.classList.toggle('active', p === activePreset);
+      });
+    }
+
+    function setPivotPreset(preset) {
+      if (!activeGroupId || !groups.has(activeGroupId)) return;
+      const g = groups.get(activeGroupId);
+      const bounds = computeGroupBounds(g.voxelKeys);
+      if (!bounds && preset !== 'origin') return;
+
+      let x = 0, y = 0, z = 0;
+      if (preset === 'origin') {
+        x = 0; y = 0; z = 0;
+      } else {
+        const cx = (bounds.minX + bounds.maxX) * 0.5;
+        const cy = (bounds.minY + bounds.maxY) * 0.5;
+        const cz = (bounds.minZ + bounds.maxZ) * 0.5;
+        x = cx; y = cy; z = cz;
+        if (preset === 'top') y = bounds.maxY;
+        if (preset === 'middle') y = cy;
+        if (preset === 'bottom') y = bounds.minY;
+        if (preset === 'left') x = bounds.minX;
+        if (preset === 'right') x = bounds.maxX;
+        if (preset === 'center') x = cx;
+      }
+
+      g.pivot = new THREE.Vector3(x, y, z);
+      syncPivotUI(g, preset);
+      applyGroupTransform(activeGroupId);
+      updateGizmoForGroup(activeGroupId);
+    }
+
+    function setPivotManual() {
+      if (!activeGroupId || !groups.has(activeGroupId)) return;
+      const g = groups.get(activeGroupId);
+      const x = +document.getElementById('piv-x').value;
+      const y = +document.getElementById('piv-y').value;
+      const z = +document.getElementById('piv-z').value;
+      g.pivot = new THREE.Vector3(
+        Number.isFinite(x) ? x : 0,
+        Number.isFinite(y) ? y : 0,
+        Number.isFinite(z) ? z : 0
+      );
+      syncPivotUI(g, null);
+      applyGroupTransform(activeGroupId);
+      updateGizmoForGroup(activeGroupId);
+    }
+
+    function setGizmoSpace(space) {
+      gizmoSpace = space === 'local' ? 'local' : 'world';
+      ['world', 'local'].forEach(s => {
+        const btn = document.getElementById('gizmo-space-' + s);
+        if (btn) btn.classList.toggle('active', s === gizmoSpace);
+      });
+      updateGizmoForGroup(activeGroupId);
+    }
+
     // ─── GIZMO (Transform Handles) ────────────────────────────
     const gizmoGroup = new THREE.Group();
     gizmoGroup.visible = false;
@@ -1707,6 +1811,11 @@
       const tr = interpolateGroupTransform(g);
       const piv = g.pivot || new THREE.Vector3(0, 0, 0);
       gizmoGroup.position.set(tr.pos.x + piv.x, tr.pos.y + piv.y, tr.pos.z + piv.z);
+      if (gizmoSpace === 'local') {
+        gizmoGroup.rotation.set(tr.rot.x, tr.rot.y, tr.rot.z);
+      } else {
+        gizmoGroup.rotation.set(0, 0, 0);
+      }
       gizmoGroup.visible = true;
     }
 
@@ -2164,7 +2273,7 @@
         up.normalize();
         const panSpeed = camRadius * 0.001;
         camTarget.addScaledVector(right, -dx * panSpeed);
-        camTarget.addScaledVector(up, -dy * panSpeed);
+        camTarget.addScaledVector(up, dy * panSpeed);
         updateCamera(); return;
       }
 
@@ -2309,12 +2418,29 @@
       const combined = -dy + dx;
 
       if (gizmoMode === 'translate') {
-        const delta = combined * sensitivity;
         const cur = interpolateGroupTransform(g);
         const newPos = { ...cur.pos };
-        if (gizmoDragAxis === 'x') newPos.x += dx * sensitivity;
-        if (gizmoDragAxis === 'y') newPos.y -= dy * sensitivity;
-        if (gizmoDragAxis === 'z') newPos.z -= dx * sensitivity;
+        if (gizmoSpace === 'local') {
+          const axisDir = new THREE.Vector3(
+            gizmoDragAxis === 'x' ? 1 : 0,
+            gizmoDragAxis === 'y' ? 1 : 0,
+            gizmoDragAxis === 'z' ? 1 : 0
+          ).applyEuler(new THREE.Euler(cur.rot.x, cur.rot.y, cur.rot.z)).normalize();
+          const viewRight = new THREE.Vector3();
+          const viewUp = new THREE.Vector3();
+          camera.matrixWorld.extractBasis(viewRight, viewUp, new THREE.Vector3());
+          viewRight.normalize();
+          viewUp.normalize();
+          const dragWorld = viewRight.multiplyScalar(dx * sensitivity).add(viewUp.multiplyScalar(-dy * sensitivity));
+          const deltaAlongAxis = dragWorld.dot(axisDir);
+          newPos.x += axisDir.x * deltaAlongAxis;
+          newPos.y += axisDir.y * deltaAlongAxis;
+          newPos.z += axisDir.z * deltaAlongAxis;
+        } else {
+          if (gizmoDragAxis === 'x') newPos.x += dx * sensitivity;
+          if (gizmoDragAxis === 'y') newPos.y -= dy * sensitivity;
+          if (gizmoDragAxis === 'z') newPos.z -= dx * sensitivity;
+        }
         document.getElementById('kf-px').value = newPos.x.toFixed(2);
         document.getElementById('kf-py').value = newPos.y.toFixed(2);
         document.getElementById('kf-pz').value = newPos.z.toFixed(2);
